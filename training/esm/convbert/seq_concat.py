@@ -20,7 +20,6 @@ from ppi_research.utils import esm_checkpoints
 import argparse
 
 
-
 seed = 7
 set_seed(seed=seed)
 
