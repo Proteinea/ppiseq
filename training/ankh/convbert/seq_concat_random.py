@@ -19,7 +19,6 @@ from ppi_research.utils import ankh_checkpoints
 import argparse
 
 
-
 seed = 7
 set_seed(seed=seed)
 
