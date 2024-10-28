@@ -7,17 +7,17 @@ def load_skempi_ppi_dataset():
     train_ds = PPIDataset(
         ds['train'],
         sequence_column_names=['protein 1 sequence', 'protein 2 sequence'],
-        label_column_name=['affinity (pKd)'],
+        label_column_name='affinity (pKd)',
     )
     val_ds = PPIDataset(
         ds['validation'],
         sequence_column_names=['protein 1 sequence', 'protein 2 sequence'],
-        label_column_name=['affinity (pKd)'],
+        label_column_name='affinity (pKd)',
     )
     test_ds = PPIDataset(
         ds['test'],
         sequence_column_names=['protein 1 sequence', 'protein 2 sequence'],
-        label_column_name=['affinity (pKd)'],
+        label_column_name='affinity (pKd)',
     )
     return train_ds, val_ds, test_ds
 

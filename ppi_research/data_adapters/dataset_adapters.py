@@ -33,12 +33,13 @@ class PPIDataset(TorchDataset):
         return self.hf_ds.num_rows
 
     def __getitem__(self, idx):
-        label = self.hf_ds[self.label_column_name][idx]
         seq_1 = self.hf_ds[self.sequence_column_names[0]][idx]
         seq_2 = self.hf_ds[self.sequence_column_names[1]][idx]
+        label = self.hf_ds[self.label_column_name][idx]
 
-        seq_1 = self.preprocessing_function(seq_1)
-        seq_2 = self.preprocessing_function(seq_2)
+        if self.preprocessing_function is not None:
+            seq_1 = self.preprocessing_function(seq_1)
+            seq_2 = self.preprocessing_function(seq_2)
 
         return {
             "affinity": label,
