@@ -11,6 +11,12 @@ from ppi_research.utils import set_seed
 from ppi_research.utils import ankh_checkpoint_mapping
 from ppi_research.utils import ankh_checkpoints
 import argparse
+import os
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
+# os.environ['WANDB_MODE'] = 'disabled'
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
 
 seed = 7
 set_seed(seed=seed)
