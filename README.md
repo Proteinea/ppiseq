@@ -4,7 +4,7 @@
 
 1. Clone this repo
 2. `cd ppi_research`
-3. `python -m pip install -e .`
+3. `python -m pip install -U -e .`
 
 ## Running Ankh/ESM
 
