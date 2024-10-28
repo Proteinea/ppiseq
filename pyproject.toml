@@ -1,0 +1,45 @@
+[build-system] 
+requires = ["hatchling<=1.18.0"]
+build-backend = "hatchling.build"
+
+
+[options]
+packages = "ppi_research"
+zip_safe = "True"
+
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project]
+name = "ppi_research"
+authors = [
+    {name="Hazem Essam", email="hazem@proteinea.com"},
+]
+maintainers = [
+    {name="Hazem Essam", email="hazem@proteinea.com"},
+]
+version = "1.0.0"
+
+requires-python = ">=3.7"
+
+description = "Protein Protein Interaction research."
+long_description = "file: README.md"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "accelerate",
+    "scikit-learn",
+    "torch",
+    "transformers",
+    "datasets",
+]
+
+[tool.black]
+line-length = 79 
+target-version = ['py37']
+force-exclude = "__init__.py"
