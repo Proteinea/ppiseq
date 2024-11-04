@@ -5,8 +5,9 @@ import random
 
 
 class PairCollator:
-    def __init__(self, tokenizer: Callable):
+    def __init__(self, tokenizer: Callable, max_length: int | None = None):
         self.tokenizer = tokenizer
+        self.max_length = max_length
 
     def __call__(self, batch):
         seqs_1, seqs_2, labels = [], [], []
@@ -18,17 +19,17 @@ class PairCollator:
         seqs_1_encoded = self.tokenizer(
             seqs_1,
             add_special_tokens=True,
-            max_length=None,
-            padding=True,
-            truncation=False,
+            max_length=self.max_length,
+            padding="longest",
+            truncation=True,
             return_tensors="pt",
         )
         seqs_2_encoded = self.tokenizer(
             seqs_2,
             add_special_tokens=True,
-            max_length=None,
-            padding=True,
-            truncation=False,
+            max_length=self.max_length,
+            padding="longest",
+            truncation=True,
             return_tensors="pt",
         )
         labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
@@ -49,6 +50,7 @@ class SequenceConcatCollator:
         random_swapping=False,
         swapping_prob=0.5,
         preprocessing_function: Callable | None = None,
+        max_length: int | None = None,
     ):
         if preprocessing_function is not None and not callable(
             self.preprocessing_function
@@ -59,6 +61,7 @@ class SequenceConcatCollator:
         self.random_swapping = random_swapping
         self.swapping_prob = swapping_prob
         self.preprocessing_function = preprocessing_function
+        self.max_length = max_length
 
     def __call__(self, batch):
         sequences, labels = [], []
@@ -81,9 +84,9 @@ class SequenceConcatCollator:
         encoded_sequences = self.tokenizer(
             sequences,
             add_special_tokens=True,
-            max_length=None,
-            padding=True,
-            truncation=False,
+            max_length=self.max_length,
+            padding="longest",
+            truncation=True,
             return_tensors="pt",
         )
         labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
