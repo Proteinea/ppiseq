@@ -22,6 +22,26 @@ def load_skempi_ppi_dataset():
     return train_ds, val_ds, test_ds
 
 
+def load_ppi_deepdirect_dataset():
+    ds = load_dataset("proteinea/ppi_deepdirect")
+    train_ds = PPIDataset(
+        ds['train'],
+        sequence_column_names=['Pre_Mut_Seq', 'Aft_Mut_Seq'],
+        label_column_name='DDG',
+    )
+    val_ds = PPIDataset(
+        ds['validation'],
+        sequence_column_names=['Pre_Mut_Seq', 'Aft_Mut_Seq'],
+        label_column_name='DDG',
+    )
+    test_ds = PPIDataset(
+        ds['test'],
+        sequence_column_names=['Pre_Mut_Seq', 'Aft_Mut_Seq'],
+        label_column_name='DDG',
+    )
+    return train_ds, val_ds, test_ds
+
+
 def load_peer_ppi_dataset():
     data_files = {
         "train": "train_split.csv",
@@ -51,6 +71,7 @@ def load_peer_ppi_dataset():
 available_datasets = {
     "skempi": load_skempi_ppi_dataset,
     "peer": load_peer_ppi_dataset,
+    "deepdirect": load_ppi_deepdirect_dataset,
 }
 
 
