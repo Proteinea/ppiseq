@@ -86,7 +86,7 @@ class SequenceConcatCollator:
             add_special_tokens=True,
             max_length=self.max_length,
             padding="longest",
-            truncation=True,
+            truncation=self.max_length is not None,
             return_tensors="pt",
         )
         labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
