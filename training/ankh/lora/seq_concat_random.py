@@ -82,7 +82,7 @@ def main(args):
         save_safetensors=False,
     )
 
-    train_ds, val_ds, test_ds = ppi_datasets.load_ppi_dataset(ds_name)
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(ds_name)
 
     trainer = Trainer(
         model=downstream_model,
@@ -92,7 +92,7 @@ def main(args):
             random_swapping=True,
         ),
         train_dataset=train_ds,
-        eval_dataset={"validation": val_ds, "test": test_ds},
+        eval_dataset=eval_datasets,
         compute_metrics=compute_ppi_metrics,
     )
 
