@@ -1,9 +1,9 @@
 import os
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
-os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 from transformers import AutoTokenizer
 from transformers import T5ForConditionalGeneration
@@ -29,6 +29,7 @@ set_seed(seed=seed)
 def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
+    max_length = args.max_length
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = T5ForConditionalGeneration.from_pretrained(ckpt)
@@ -90,6 +91,7 @@ def main(args):
         data_collator=SequenceConcatCollator(
             tokenizer=tokenizer,
             random_swapping=False,
+            max_length=max_length,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
@@ -112,6 +114,12 @@ if __name__ == "__main__":
         type=str,
         required=True,
         choices=list(ppi_datasets.available_datasets.keys()),
+    )
+    argparser.add_argument(
+        "--max_length",
+        type=int,
+        default=None,
+        required=False,
     )
     args = argparser.parse_args()
     args.ckpt = ankh_checkpoint_mapping(args.ckpt)
