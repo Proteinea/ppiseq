@@ -10,8 +10,8 @@ available_esm_checkpoints = {
 available_ankh_checkpoints = {
     "ankh_base": "ElnaggarLab/ankh-base",
     "ankh_large": "ElnaggarLab/ankh-large",
-    "ankh2_ext1": "ElnaggarLab/ankh2_ext1",
-    "ankh2_ext2": "ElnaggarLab/ankh2_ext2",
+    "ankh2_ext1": "ElnaggarLab/ankh2-ext1",
+    "ankh2_ext2": "ElnaggarLab/ankh2-ext2",
 }
 
 

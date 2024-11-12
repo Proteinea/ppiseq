@@ -28,6 +28,7 @@ set_seed(seed=seed)
 def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
+    max_length = args.max_length
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = AutoModel.from_pretrained(ckpt)
@@ -81,16 +82,16 @@ def main(args):
         save_safetensors=False,
     )
 
-    train_ds, val_ds, test_ds = ppi_datasets.load_ppi_dataset(ds_name)
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(ds_name)
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.SequenceConcatCollator(
-            tokenizer=tokenizer, random_swapping=True
+            tokenizer=tokenizer, random_swapping=True, max_length=max_length
         ),
         train_dataset=train_ds,
-        eval_dataset={"validation": val_ds, "test": test_ds},
+        eval_dataset=eval_datasets,
         compute_metrics=compute_ppi_metrics,
     )
 
@@ -110,6 +111,12 @@ if __name__ == "__main__":
         type=str,
         required=True,
         choices=list(ppi_datasets.available_datasets.keys()),
+    )
+    argparser.add_argument(
+        "--max_length",
+        type=int,
+        default=None,
+        required=False,
     )
     args = argparser.parse_args()
     args.ckpt = esm_checkpoint_mapping(args.ckpt)
