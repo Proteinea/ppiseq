@@ -71,7 +71,7 @@ def main(args):
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
-        data_collator=data_adapters.PairCollator(tokenizer=tokenizer),
+        data_collator=data_adapters.SequenceConcatCollator(tokenizer=tokenizer, random_swapping=True),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
         compute_metrics=compute_ppi_metrics,

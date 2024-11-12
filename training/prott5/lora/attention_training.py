@@ -1,9 +1,9 @@
 import os
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
-os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
 from transformers import AutoTokenizer
@@ -20,6 +20,7 @@ from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.utils import set_seed
 from ppi_research.utils import prott5_checkpoints
 from ppi_research.utils import prott5_checkpoint_mapping
+from ppi_research.preprocessing.prott5 import sequence_preprocessing
 import argparse
 
 
@@ -76,7 +77,7 @@ def main(args):
         seed=seed,
         load_best_model_at_end=True,
         save_total_limit=1,
-        metric_for_best_model='eval_validation_rmse',
+        metric_for_best_model="eval_validation_rmse",
         greater_is_better=False,
         save_strategy="epoch",
         report_to="wandb",
@@ -84,7 +85,9 @@ def main(args):
         save_safetensors=False,
     )
 
-    train_ds, val_ds, test_ds = ppi_datasets.load_ppi_dataset(ds_name)
+    train_ds, val_ds, test_ds = ppi_datasets.load_ppi_dataset(
+        ds_name, sequence_preprocessing
+    )
 
     trainer = Trainer(
         model=downstream_model,

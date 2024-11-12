@@ -1,43 +1,53 @@
+from __future__ import annotations
+from typing import Callable
 from ppi_research.data_adapters.dataset_adapters import PPIDataset
 from datasets import load_dataset
 
 
-def load_skempi_ppi_dataset():
+def load_skempi_ppi_dataset(preprocessing_function: Callable | None = None):
     ds = load_dataset("proteinea/skempi_ppi")
     train_ds = PPIDataset(
         ds["train"],
         sequence_column_names=["protein 1 sequence", "protein 2 sequence"],
         label_column_name="affinity (pKd)",
+        preprocessing_function=preprocessing_function,
     )
     val_ds = PPIDataset(
         ds["validation"],
         sequence_column_names=["protein 1 sequence", "protein 2 sequence"],
         label_column_name="affinity (pKd)",
+        preprocessing_function=preprocessing_function,
     )
     test_ds = PPIDataset(
         ds["test"],
         sequence_column_names=["protein 1 sequence", "protein 2 sequence"],
         label_column_name="affinity (pKd)",
+        preprocessing_function=preprocessing_function,
     )
     return train_ds, {"validation": val_ds, "test": test_ds}
 
 
-def load_ppi_deepdirect_dataset():
+def load_ppi_deepdirect_dataset(
+    preprocessing_function: Callable | None = None,
+):
     ds = load_dataset("proteinea/ppi_deepdirect")
     train_ds = PPIDataset(
         ds["train"],
         sequence_column_names=["Pre_Mut_Seq", "Aft_Mut_Seq"],
         label_column_name="DDG",
+        preprocessing_function=preprocessing_function,
     )
     val_ds = PPIDataset(
         ds["validation"],
         sequence_column_names=["Pre_Mut_Seq", "Aft_Mut_Seq"],
         label_column_name="DDG",
+        preprocessing_function=preprocessing_function,
     )
     test_ds = PPIDataset(
         ds["test"],
         sequence_column_names=["Pre_Mut_Seq", "Aft_Mut_Seq"],
         label_column_name="DDG",
+        preprocessing_function=preprocessing_function,
     )
     ds = load_dataset(
         "proteinea/ppi_deepdirect", data_files="ab-bind_processed.csv"
@@ -46,6 +56,7 @@ def load_ppi_deepdirect_dataset():
         ds,
         sequence_column_names=["Pre_Mut_Seq", "Aft_Mut_Seq"],
         label_column_name="DDG",
+        preprocessing_function=preprocessing_function,
     )
     return train_ds, {
         "validation": val_ds,
@@ -54,7 +65,7 @@ def load_ppi_deepdirect_dataset():
     }
 
 
-def load_peer_ppi_dataset():
+def load_peer_ppi_dataset(preprocessing_function: Callable | None = None):
     data_files = {
         "train": "train_split.csv",
         "validation": "valid_split.csv",
@@ -66,16 +77,19 @@ def load_peer_ppi_dataset():
         ds["train"],
         sequence_column_names=["graph1", "graph2"],
         label_column_name="interaction",
+        preprocessing_function=preprocessing_function,
     )
     val_ds = PPIDataset(
         ds["validation"],
         sequence_column_names=["graph1", "graph2"],
         label_column_name="interaction",
+        preprocessing_function=preprocessing_function,
     )
     test_ds = PPIDataset(
         ds["test"],
         sequence_column_names=["graph1", "graph2"],
         label_column_name="interaction",
+        preprocessing_function=preprocessing_function,
     )
     return train_ds, {"validation": val_ds, "test": test_ds}
 
@@ -87,5 +101,5 @@ available_datasets = {
 }
 
 
-def load_ppi_dataset(identifier):
-    return available_datasets[identifier]()
+def load_ppi_dataset(identifier, *args, **kwargs):
+    return available_datasets[identifier](*args, **kwargs)

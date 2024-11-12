@@ -73,7 +73,7 @@ def main():
         args=training_args,
         data_collator=SequenceConcatCollator(
             tokenizer=tokenizer,
-            randomized=False,
+            random_swapping=False,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
