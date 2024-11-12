@@ -67,7 +67,7 @@ def main():
         save_safetensors=False,
     )
 
-    train_ds, val_ds, test_ds = ppi_datasets.load_ppi_dataset(
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
         ds_name, sequence_preprocessing
     )
 
@@ -78,9 +78,10 @@ def main():
             tokenizer=tokenizer,
             random_swapping=True,
             preprocessing_function=sequence_pair_preprocessing,
+            is_split_into_words=True,
         ),
         train_dataset=train_ds,
-        eval_dataset={"validation": val_ds, "test": test_ds},
+        eval_dataset=eval_datasets,
         compute_metrics=compute_ppi_metrics,
     )
 

@@ -5,9 +5,15 @@ import random
 
 
 class PairCollator:
-    def __init__(self, tokenizer: Callable, max_length: int | None = None):
+    def __init__(
+        self,
+        tokenizer: Callable,
+        max_length: int | None = None,
+        is_split_into_words: bool = False,
+    ):
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.is_split_into_words = is_split_into_words
 
     def __call__(self, batch):
         seqs_1, seqs_2, labels = [], [], []
@@ -23,6 +29,7 @@ class PairCollator:
             padding="longest",
             truncation=self.max_length is not None,
             return_tensors="pt",
+            is_split_into_words=self.is_split_into_words,
         )
         seqs_2_encoded = self.tokenizer(
             seqs_2,
@@ -31,6 +38,7 @@ class PairCollator:
             padding="longest",
             truncation=self.max_length is not None,
             return_tensors="pt",
+            is_split_into_words=self.is_split_into_words,
         )
         labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
 
@@ -51,6 +59,7 @@ class SequenceConcatCollator:
         swapping_prob=0.5,
         preprocessing_function: Callable | None = None,
         max_length: int | None = None,
+        is_split_into_words: bool = False,
     ):
         if preprocessing_function is not None and not callable(
             self.preprocessing_function
@@ -62,6 +71,7 @@ class SequenceConcatCollator:
         self.swapping_prob = swapping_prob
         self.preprocessing_function = preprocessing_function
         self.max_length = max_length
+        self.is_split_into_words = is_split_into_words
 
     def __call__(self, batch):
         sequences, labels = [], []
@@ -88,6 +98,7 @@ class SequenceConcatCollator:
             padding="longest",
             truncation=self.max_length is not None,
             return_tensors="pt",
+            is_split_into_words=self.is_split_into_words,
         )
         labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
 

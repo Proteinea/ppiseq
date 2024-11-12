@@ -1,6 +1,6 @@
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
@@ -85,16 +85,18 @@ def main(args):
         save_safetensors=False,
     )
 
-    train_ds, val_ds, test_ds = ppi_datasets.load_ppi_dataset(
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
         ds_name, sequence_preprocessing
     )
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
-        data_collator=data_adapters.PairCollator(tokenizer=tokenizer),
+        data_collator=data_adapters.PairCollator(
+            tokenizer=tokenizer, is_split_into_words=True
+        ),
         train_dataset=train_ds,
-        eval_dataset={"validation": val_ds, "test": test_ds},
+        eval_dataset=eval_datasets,
         compute_metrics=compute_ppi_metrics,
     )
 

@@ -66,16 +66,18 @@ def main():
         save_safetensors=False,
     )
 
-    train_ds, val_ds, test_ds = ppi_datasets.load_ppi_dataset(
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
         ds_name, sequence_preprocessing
     )
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
-        data_collator=data_adapters.PairCollator(tokenizer=tokenizer),
+        data_collator=data_adapters.PairCollator(
+            tokenizer=tokenizer, is_split_into_words=True
+        ),
         train_dataset=train_ds,
-        eval_dataset={"validation": val_ds, "test": test_ds},
+        eval_dataset=eval_datasets,
         compute_metrics=compute_ppi_metrics,
     )
 

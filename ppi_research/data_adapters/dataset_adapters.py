@@ -20,7 +20,7 @@ class PPIDataset(TorchDataset):
             )
 
         if preprocessing_function is not None and not callable(
-            self.preprocessing_function
+            preprocessing_function
         ):
             raise ValueError("`preprocessing_function` is not callable.")
 
