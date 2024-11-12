@@ -6,7 +6,7 @@ os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
-from transformers import AutoTokenizer
+from transformers import T5Tokenizer
 from transformers import T5EncoderModel
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.data_adapters.collators import SequenceConcatCollator
@@ -31,7 +31,7 @@ def main():
     ckpt = args.ckpt
     ds_name = args.ds_name
     print("Checkpoint:", ckpt)
-    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+    tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5EncoderModel.from_pretrained(ckpt)
     downstream_model = SequenceConcatModel(model)
 

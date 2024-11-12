@@ -5,7 +5,7 @@ os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
-from transformers import AutoTokenizer
+from transformers import T5Tokenizer
 from transformers import T5ForConditionalGeneration
 from peft import LoraConfig
 from peft import get_peft_model
@@ -32,7 +32,7 @@ def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
     print("Checkpoint:", ckpt)
-    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+    tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5ForConditionalGeneration.from_pretrained(ckpt)
     r = 16
     alpha = 32
