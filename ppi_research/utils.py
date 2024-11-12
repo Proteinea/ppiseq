@@ -15,6 +15,11 @@ available_ankh_checkpoints = {
 }
 
 
+available_prott5_checkpoints = {
+    "prott5": "Rostlab/prot_t5_xl_uniref50",
+}
+
+
 def create_run_name(**kwargs) -> str:
     output = ""
     for k, v in kwargs.items():
@@ -46,3 +51,11 @@ def esm_checkpoints():
 
 def esm_checkpoint_mapping(name):
     return available_esm_checkpoints[name]
+
+
+def prott5_checkpoints():
+    return list(available_prott5_checkpoints.keys())
+
+
+def prott5_checkpoint_mapping(name):
+    return available_prott5_checkpoints[name]

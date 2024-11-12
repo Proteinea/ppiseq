@@ -6,10 +6,9 @@ os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
 
 from transformers import AutoTokenizer
-from transformers import AutoModel
+from transformers import T5ForConditionalGeneration
 from peft import LoraConfig
 from peft import get_peft_model
-from ppi_research.data_adapters import ppi_datasets
 from ppi_research.utils import create_run_name
 from ppi_research.models import PerceiverModel
 from transformers import Trainer
@@ -17,8 +16,9 @@ from transformers import TrainingArguments
 from ppi_research import data_adapters
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.utils import set_seed
-from ppi_research.utils import esm_checkpoint_mapping
-from ppi_research.utils import esm_checkpoints
+from ppi_research.data_adapters import ppi_datasets
+from ppi_research.utils import prott5_checkpoints
+from ppi_research.utils import prott5_checkpoint_mapping
 import argparse
 
 
@@ -30,11 +30,12 @@ def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
     print("Checkpoint:", ckpt)
+
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
-    model = AutoModel.from_pretrained(ckpt)
+    model = T5ForConditionalGeneration.from_pretrained(ckpt)
     r = 16
     alpha = 32
-    target_modules = ["query", "value"]
+    target_modules = ["q", "v"]
     lora_config = LoraConfig(
         r=r,
         lora_alpha=alpha,
@@ -43,13 +44,15 @@ def main(args):
         target_modules=target_modules,
     )
 
-    peft_model = get_peft_model(model, lora_config)
-    downstream_model = PerceiverModel(peft_model)
+    peft_model = get_peft_model(model, lora_config).encoder
+    num_latents = 512
+    downstream_model = PerceiverModel(peft_model, num_latents=num_latents)
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="lora_attn_pooled_addition",
+        setup="lora_perceiver",
         r=r,
+        num_latents=num_latents,
         alpha=alpha,
         target_modules=target_modules,
     )
@@ -102,7 +105,7 @@ if __name__ == "__main__":
         "--ckpt",
         type=str,
         required=True,
-        choices=esm_checkpoints(),
+        choices=prott5_checkpoints(),
     )
     argparser.add_argument(
         "--ds_name",
@@ -111,5 +114,5 @@ if __name__ == "__main__":
         choices=list(ppi_datasets.available_datasets.keys()),
     )
     args = argparser.parse_args()
-    args.ckpt = esm_checkpoint_mapping(args.ckpt)
+    args.ckpt = prott5_checkpoint_mapping(args.ckpt)
     main(args)

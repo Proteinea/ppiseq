@@ -14,7 +14,6 @@
 4. `cd lora`
 5. `python attention_training.py --ckpt ankh_base --ds_name skempi # or --ckpt esm_650m`
 
-
 ## If you want to know what are the available checkpoints to run use the following:
 
 1. `cd ppi_research`

@@ -1,24 +1,21 @@
 import os
-
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
 # os.environ['WANDB_MODE'] = 'disabled'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
 
 from transformers import AutoTokenizer
-from transformers import AutoModel
-from peft import LoraConfig
-from peft import get_peft_model
+from transformers import T5EncoderModel
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.utils import create_run_name
-from ppi_research.models import PerceiverModel
+from ppi_research.models import AttnPoolAddConvBERTModel
 from transformers import Trainer
 from transformers import TrainingArguments
 from ppi_research import data_adapters
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.utils import set_seed
-from ppi_research.utils import esm_checkpoint_mapping
-from ppi_research.utils import esm_checkpoints
+from ppi_research.utils import prott5_checkpoints
+from ppi_research.utils import prott5_checkpoint_mapping
 import argparse
 
 
@@ -26,32 +23,17 @@ seed = 7
 set_seed(seed=seed)
 
 
-def main(args):
+def main():
     ckpt = args.ckpt
     ds_name = args.ds_name
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
-    model = AutoModel.from_pretrained(ckpt)
-    r = 16
-    alpha = 32
-    target_modules = ["query", "value"]
-    lora_config = LoraConfig(
-        r=r,
-        lora_alpha=alpha,
-        lora_dropout=0.0,
-        bias="none",
-        target_modules=target_modules,
-    )
-
-    peft_model = get_peft_model(model, lora_config)
-    downstream_model = PerceiverModel(peft_model)
+    model = T5EncoderModel.from_pretrained(ckpt)
+    downstream_model = AttnPoolAddConvBERTModel(model)
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="lora_attn_pooled_addition",
-        r=r,
-        alpha=alpha,
-        target_modules=target_modules,
+        setup="convbert_attn_pooled_addition",
     )
 
     training_args = TrainingArguments(
@@ -67,15 +49,15 @@ def main(args):
         logging_steps=1,
         do_train=True,
         do_eval=True,
-        eval_strategy="epoch",
+        eval_strategy='epoch',
         gradient_accumulation_steps=16,
         fp16=False,
         fp16_opt_level="02",
         seed=seed,
         load_best_model_at_end=True,
         save_total_limit=1,
-        metric_for_best_model='eval_validation_rmse',
-        greater_is_better=False,
+        metric_for_best_model='eval_validation_spearman',
+        greater_is_better=True,
         save_strategy="epoch",
         report_to="wandb",
         remove_unused_columns=False,
@@ -89,8 +71,8 @@ def main(args):
         args=training_args,
         data_collator=data_adapters.PairCollator(tokenizer=tokenizer),
         train_dataset=train_ds,
-        eval_dataset={"validation": val_ds, "test": test_ds},
-        compute_metrics=compute_ppi_metrics,
+        eval_dataset={'validation': val_ds, "test": test_ds},
+        compute_metrics=compute_ppi_metrics
     )
 
     trainer.train()
@@ -102,7 +84,7 @@ if __name__ == "__main__":
         "--ckpt",
         type=str,
         required=True,
-        choices=esm_checkpoints(),
+        choices=prott5_checkpoints(),
     )
     argparser.add_argument(
         "--ds_name",
@@ -111,5 +93,5 @@ if __name__ == "__main__":
         choices=list(ppi_datasets.available_datasets.keys()),
     )
     args = argparser.parse_args()
-    args.ckpt = esm_checkpoint_mapping(args.ckpt)
+    args.ckpt = prott5_checkpoint_mapping(args.ckpt)
     main(args)

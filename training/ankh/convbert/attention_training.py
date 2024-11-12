@@ -19,7 +19,6 @@ from ppi_research.utils import ankh_checkpoints
 import argparse
 
 
-
 seed = 7
 set_seed(seed=seed)
 
@@ -57,8 +56,8 @@ def main():
         seed=seed,
         load_best_model_at_end=True,
         save_total_limit=1,
-        metric_for_best_model='eval_validation_spearman',
-        greater_is_better=True,
+        metric_for_best_model='eval_validation_rmse',
+        greater_is_better=False,
         save_strategy="epoch",
         report_to="wandb",
         remove_unused_columns=False,
