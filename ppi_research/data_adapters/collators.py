@@ -62,7 +62,7 @@ class SequenceConcatCollator:
         is_split_into_words: bool = False,
     ):
         if preprocessing_function is not None and not callable(
-            self.preprocessing_function
+            preprocessing_function
         ):
             raise ValueError("`preprocessing_function` is not callable.")
 
