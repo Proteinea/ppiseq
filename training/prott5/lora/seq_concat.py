@@ -31,6 +31,7 @@ set_seed(seed=seed)
 def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
+    max_length = args.max_length
     print("Checkpoint:", ckpt)
     tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5ForConditionalGeneration.from_pretrained(ckpt)
@@ -96,6 +97,7 @@ def main(args):
             random_swapping=False,
             preprocessing_function=sequence_pair_preprocessing,
             is_split_into_words=True,
+            max_length=max_length,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
@@ -118,6 +120,12 @@ if __name__ == "__main__":
         type=str,
         required=True,
         choices=list(ppi_datasets.available_datasets.keys()),
+    )
+    argparser.add_argument(
+        "--max_length",
+        type=int,
+        default=None,
+        required=False,
     )
     args = argparser.parse_args()
     args.ckpt = prott5_checkpoint_mapping(args.ckpt)
