@@ -121,8 +121,8 @@ def load_inhouse_fc2ra(preprocessing_function: Callable | None = None):
 
 def load_inhouse_fc2rb(preprocessing_function: Callable | None = None):
     data_files = {
-        "train": "FcγRIIb_train.csv",
-        "validation": "FcγRIIb_test.csv",
+        "train": "FcyRIIb_train.csv",
+        "validation": "FcyRIIb_test.csv",
     }
     ds = load_dataset("proteinea/inhouse-ppi-affinity", data_files=data_files)
 
