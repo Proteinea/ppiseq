@@ -1,6 +1,6 @@
 import os
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
 # os.environ['WANDB_MODE'] = 'disabled'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
@@ -48,7 +48,7 @@ def main(args):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="lora_attn_pooled_addition",
+        setup="lora_sequence_concat_randomized",
         r=r,
         alpha=alpha,
         target_modules=target_modules,
