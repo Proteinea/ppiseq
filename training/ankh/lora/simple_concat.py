@@ -1,5 +1,7 @@
 import os
 
+from ppi_research.layers import poolers
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -31,6 +33,7 @@ def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
     max_length = args.max_length
+    pooler_name = args.pooler
     print("Checkpoint:", ckpt)
 
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
@@ -47,7 +50,13 @@ def main(args):
     )
 
     model = get_peft_model(model, lora_config).encoder
-    downstream_model = SimpleConcatModel(model)
+    pooler = poolers.get(pooler_name)
+    downstream_model = SimpleConcatModel(
+        backbone=model,
+        pooler=pooler,
+        model_name="ankh",
+        embedding_name="last_hidden_state",
+    )
 
     run_name = create_run_name(
         backbone=ckpt,
@@ -55,6 +64,7 @@ def main(args):
         r=r,
         alpha=alpha,
         target_modules=target_modules,
+        pooler=pooler_name,
     )
 
     training_args = TrainingArguments(

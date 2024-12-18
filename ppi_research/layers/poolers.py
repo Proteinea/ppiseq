@@ -14,7 +14,7 @@ def global_mean_pooling1d(
 
 
 class GlobalAvgPooling1D(nn.Module):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
 
     def forward(
@@ -67,3 +67,19 @@ class GatedPooling1D(nn.Module):
 
         gates = nn.functional.sigmoid(outputs)
         return torch.sum(x * gates.unsqueeze(-1), dim=1)
+
+
+available_poolers = {
+    "avg": GlobalAvgPooling1D,
+    "attn": AttentionPooling1D,
+    "gated": GatedPooling1D,
+}
+
+
+def get(identifier, *args, **kwargs):
+    pooler = available_poolers.get(identifier)
+    if pooler is None:
+        available_pooler_names = list(available_poolers.keys())
+        raise ValueError("Expected `identifier` to be one of the following: "
+                         f"{available_pooler_names}. Received: {identifier}.")
+    return pooler(*args, **kwargs)

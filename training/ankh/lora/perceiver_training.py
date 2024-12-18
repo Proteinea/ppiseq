@@ -1,5 +1,7 @@
 import os
 
+from ppi_research.layers import poolers
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -30,6 +32,7 @@ def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
     max_length = args.max_length
+    pooler_name = args.pooler
     print("Checkpoint:", ckpt)
 
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
@@ -47,7 +50,14 @@ def main(args):
 
     peft_model = get_peft_model(model, lora_config).encoder
     num_latents = 512
-    downstream_model = PerceiverModel(peft_model, num_latents=num_latents)
+    pooler = poolers.get(pooler_name)
+    downstream_model = PerceiverModel(
+        backbone=peft_model,
+        pooler=pooler,
+        model_name="ankh",
+        embedding_name="last_hidden_state",
+        num_latents=num_latents,
+    )
 
     run_name = create_run_name(
         backbone=ckpt,
@@ -56,6 +66,7 @@ def main(args):
         num_latents=num_latents,
         alpha=alpha,
         target_modules=target_modules,
+        pooler=pooler_name,
     )
 
     training_args = TrainingArguments(
