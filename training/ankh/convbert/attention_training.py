@@ -1,8 +1,9 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
+
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
-os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 from transformers import AutoTokenizer
 from transformers import T5EncoderModel
@@ -23,9 +24,10 @@ seed = 7
 set_seed(seed=seed)
 
 
-def main():
+def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
+    max_length = args.max_length
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = T5EncoderModel.from_pretrained(ckpt)
@@ -49,14 +51,14 @@ def main():
         logging_steps=1,
         do_train=True,
         do_eval=True,
-        eval_strategy='epoch',
+        eval_strategy="epoch",
         gradient_accumulation_steps=16,
         fp16=False,
         fp16_opt_level="02",
         seed=seed,
         load_best_model_at_end=True,
         save_total_limit=1,
-        metric_for_best_model='eval_validation_rmse',
+        metric_for_best_model="eval_validation_rmse",
         greater_is_better=False,
         save_strategy="epoch",
         report_to="wandb",
@@ -69,10 +71,12 @@ def main():
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
-        data_collator=data_adapters.PairCollator(tokenizer=tokenizer),
+        data_collator=data_adapters.PairCollator(
+            tokenizer=tokenizer, max_length=max_length
+        ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
-        compute_metrics=compute_ppi_metrics
+        compute_metrics=compute_ppi_metrics,
     )
 
     trainer.train()
@@ -91,6 +95,12 @@ if __name__ == "__main__":
         type=str,
         required=True,
         choices=list(ppi_datasets.available_datasets.keys()),
+    )
+    argparser.add_argument(
+        "--max_length",
+        type=int,
+        default=None,
+        required=False,
     )
     args = argparser.parse_args()
     args.ckpt = ankh_checkpoint_mapping(args.ckpt)

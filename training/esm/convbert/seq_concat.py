@@ -1,14 +1,14 @@
 import os
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
-os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 from transformers import AutoTokenizer
 from transformers import AutoModel
 from ppi_research.data_adapters import ppi_datasets
-from ppi_research.models import SequenceConcatModel
+from ppi_research.models import SequenceConcatConvBERTModel
 from transformers import Trainer
 from transformers import TrainingArguments
 from ppi_research import data_adapters
@@ -27,10 +27,11 @@ set_seed(seed=seed)
 def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
+    max_length = args.max_length
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = AutoModel.from_pretrained(ckpt)
-    downstream_model = SequenceConcatModel(model)
+    downstream_model = SequenceConcatConvBERTModel(model)
 
     run_name = create_run_name(
         backbone=ckpt,
@@ -57,7 +58,7 @@ def main(args):
         seed=seed,
         load_best_model_at_end=True,
         save_total_limit=1,
-        metric_for_best_model='eval_validation_rmse',
+        metric_for_best_model="eval_validation_rmse",
         greater_is_better=False,
         save_strategy="epoch",
         report_to="wandb",
@@ -71,7 +72,7 @@ def main(args):
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.SequenceConcatCollator(
-            tokenizer=tokenizer, random_swapping=False
+            tokenizer=tokenizer, random_swapping=False, max_length=max_length
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
@@ -94,6 +95,12 @@ if __name__ == "__main__":
         type=str,
         required=True,
         choices=list(ppi_datasets.available_datasets.keys()),
+    )
+    argparser.add_argument(
+        "--max_length",
+        type=int,
+        default=None,
+        required=False,
     )
     args = argparser.parse_args()
     args.ckpt = esm_checkpoint_mapping(args.ckpt)
