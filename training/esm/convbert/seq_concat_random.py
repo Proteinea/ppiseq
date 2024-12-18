@@ -5,21 +5,19 @@ os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
-
-from transformers import AutoTokenizer
-from transformers import AutoModel
-from ppi_research.data_adapters import ppi_datasets
-from ppi_research.utils import create_run_name
-from ppi_research.models import SequenceConcatConvBERTModel
-from transformers import Trainer
-from transformers import TrainingArguments
 from ppi_research import data_adapters
+from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
-from ppi_research.utils import set_seed
+from ppi_research.models import SequenceConcatConvBERTModel
+from ppi_research.utils import create_run_name
 from ppi_research.utils import esm_checkpoint_mapping
 from ppi_research.utils import esm_checkpoints
-import argparse
-
+from ppi_research.utils import parse_common_args
+from ppi_research.utils import set_seed
+from transformers import AutoModel
+from transformers import AutoTokenizer
+from transformers import Trainer
+from transformers import TrainingArguments
 
 seed = 7
 set_seed(seed=seed)
@@ -84,25 +82,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument(
-        "--ckpt",
-        type=str,
-        required=True,
-        choices=esm_checkpoints(),
-    )
-    argparser.add_argument(
-        "--ds_name",
-        type=str,
-        required=True,
-        choices=list(ppi_datasets.available_datasets.keys()),
-    )
-    argparser.add_argument(
-        "--max_length",
-        type=int,
-        default=None,
-        required=False,
-    )
-    args = argparser.parse_args()
+    args = parse_common_args(checkpoints=esm_checkpoints())
     args.ckpt = esm_checkpoint_mapping(args.ckpt)
     main(args)

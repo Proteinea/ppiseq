@@ -22,7 +22,7 @@ from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.utils import set_seed
 from ppi_research.utils import ankh_checkpoint_mapping
 from ppi_research.utils import ankh_checkpoints
-import argparse
+from ppi_research.utils import parse_common_args
 
 
 seed = 7
@@ -112,25 +112,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument(
-        "--ckpt",
-        type=str,
-        required=True,
-        choices=ankh_checkpoints(),
-    )
-    argparser.add_argument(
-        "--ds_name",
-        type=str,
-        required=True,
-        choices=list(ppi_datasets.available_datasets.keys()),
-    )
-    argparser.add_argument(
-        "--max_length",
-        type=int,
-        default=None,
-        required=False,
-    )
-    args = argparser.parse_args()
+    args = parse_common_args(checkpoints=ankh_checkpoints())
     args.ckpt = ankh_checkpoint_mapping(args.ckpt)
     main(args)

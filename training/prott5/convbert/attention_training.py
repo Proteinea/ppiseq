@@ -8,7 +8,7 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 from transformers import T5Tokenizer
 from transformers import T5EncoderModel
 from ppi_research.data_adapters import ppi_datasets
-from ppi_research.utils import create_run_name
+from ppi_research.utils import create_run_name, parse_common_args
 from ppi_research.models import AttnPoolAddConvBERTModel
 from transformers import Trainer
 from transformers import TrainingArguments
@@ -18,7 +18,6 @@ from ppi_research.utils import set_seed
 from ppi_research.utils import prott5_checkpoints
 from ppi_research.utils import prott5_checkpoint_mapping
 from ppi_research.preprocessing.prott5 import sequence_preprocessing
-import argparse
 
 
 seed = 7
@@ -88,25 +87,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument(
-        "--ckpt",
-        type=str,
-        required=True,
-        choices=prott5_checkpoints(),
-    )
-    argparser.add_argument(
-        "--ds_name",
-        type=str,
-        required=True,
-        choices=list(ppi_datasets.available_datasets.keys()),
-    )
-    argparser.add_argument(
-        "--max_length",
-        type=int,
-        default=None,
-        required=False,
-    )
-    args = argparser.parse_args()
+    args = parse_common_args(checkpoints=prott5_checkpoints())
     args.ckpt = prott5_checkpoint_mapping(args.ckpt)
     main(args)
