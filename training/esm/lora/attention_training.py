@@ -1,5 +1,7 @@
 import os
 
+from ppi_research.layers import poolers
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -29,6 +31,7 @@ def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
     max_length = args.max_length
+    pooler_name = args.pooler
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = AutoModel.from_pretrained(ckpt)
@@ -42,9 +45,15 @@ def main(args):
         bias="none",
         target_modules=target_modules,
     )
+    model = get_peft_model(model, lora_config)
 
-    peft_model = get_peft_model(model, lora_config)
-    downstream_model = AttnPoolAddModel(peft_model)
+    pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
+    downstream_model = AttnPoolAddModel(
+        backbone=model,
+        pooler=pooler,
+        model_name="esm2",
+        embedding_name="last_hidden_state",
+    )
 
     run_name = create_run_name(
         backbone=ckpt,
@@ -52,6 +61,7 @@ def main(args):
         r=r,
         alpha=alpha,
         target_modules=target_modules,
+        pooler=pooler_name,
     )
 
     training_args = TrainingArguments(

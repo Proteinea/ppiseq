@@ -47,9 +47,9 @@ def main(args):
         bias="none",
         target_modules=target_modules,
     )
-
     model = get_peft_model(model, lora_config).encoder
-    pooler = poolers.get(pooler_name)
+
+    pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
     downstream_model = SimpleConcatModel(
         backbone=model,
         pooler=pooler,

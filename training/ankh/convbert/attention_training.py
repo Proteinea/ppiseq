@@ -1,5 +1,7 @@
 import os
 
+from ppi_research.layers import poolers
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -27,14 +29,23 @@ def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
     max_length = args.max_length
+    pooler_name = args.pooler
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = T5EncoderModel.from_pretrained(ckpt)
-    downstream_model = AttnPoolAddConvBERTModel(model)
+
+    pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
+    downstream_model = AttnPoolAddConvBERTModel(
+        backbone=model,
+        pooler=pooler,
+        model_name="ankh",
+        embedding_name="last_hidden_state",
+    )
 
     run_name = create_run_name(
         backbone=ckpt,
         setup="convbert_attn_pooled_addition",
+        pooler=pooler_name,
     )
 
     training_args = TrainingArguments(

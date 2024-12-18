@@ -48,11 +48,11 @@ def main(args):
         target_modules=target_modules,
     )
 
-    peft_model = get_peft_model(model, lora_config).encoder
+    model = get_peft_model(model, lora_config).encoder
     num_latents = 512
-    pooler = poolers.get(pooler_name)
+    pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
     downstream_model = PerceiverModel(
-        backbone=peft_model,
+        backbone=model,
         pooler=pooler,
         model_name="ankh",
         embedding_name="last_hidden_state",

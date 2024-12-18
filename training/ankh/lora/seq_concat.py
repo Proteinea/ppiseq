@@ -46,10 +46,10 @@ def main(args):
         target_modules=target_modules,
     )
 
-    peft_model = get_peft_model(model, lora_config).encoder
-    pooler = poolers.get(pooler_name)
+    model = get_peft_model(model, lora_config).encoder
+    pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
     downstream_model = SequenceConcatModel(
-        backbone=peft_model,
+        backbone=model,
         pooler=pooler,
         model_name="ankh",
         embedding_name="last_hidden_state",
