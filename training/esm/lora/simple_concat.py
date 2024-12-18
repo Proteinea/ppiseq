@@ -1,23 +1,25 @@
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
+os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
-os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
 from transformers import AutoTokenizer
-from transformers import T5EncoderModel
+from transformers import AutoModel
+from peft import LoraConfig
+from peft import get_peft_model
 from ppi_research.data_adapters import ppi_datasets
-from ppi_research.data_adapters.collators import SequenceConcatCollator
-from ppi_research.models import SequenceConcatConvBERTModel
 from ppi_research.utils import create_run_name
+from ppi_research.models import SimpleConcatModel
 from transformers import Trainer
 from transformers import TrainingArguments
+from ppi_research import data_adapters
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.utils import set_seed
-from ppi_research.utils import ankh_checkpoint_mapping
-from ppi_research.utils import ankh_checkpoints
+from ppi_research.utils import esm_checkpoint_mapping
+from ppi_research.utils import esm_checkpoints
 import argparse
 
 
@@ -30,17 +32,33 @@ def main(args):
     ds_name = args.ds_name
     max_length = args.max_length
     print("Checkpoint:", ckpt)
+
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
-    model = T5EncoderModel.from_pretrained(ckpt)
-    downstream_model = SequenceConcatConvBERTModel(model)
+    model = AutoModel.from_pretrained(ckpt)
+    r = 16
+    alpha = 32
+    target_modules = ["query", "value"]
+    lora_config = LoraConfig(
+        r=r,
+        lora_alpha=alpha,
+        lora_dropout=0.0,
+        bias="none",
+        target_modules=target_modules,
+    )
+
+    model = get_peft_model(model, lora_config)
+    downstream_model = SimpleConcatModel(model)
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="convbert_sequence_concat",
+        setup="lora_simple_concat",
+        r=r,
+        alpha=alpha,
+        target_modules=target_modules,
     )
 
     training_args = TrainingArguments(
-        output_dir=run_name + "_weights",
+        output_dir=f"/app/checkpoints/{run_name}_weights",
         run_name=run_name,
         num_train_epochs=20,
         per_device_train_batch_size=1,
@@ -52,7 +70,7 @@ def main(args):
         logging_steps=1,
         do_train=True,
         do_eval=True,
-        eval_strategy='epoch',
+        eval_strategy="epoch",
         gradient_accumulation_steps=16,
         fp16=False,
         fp16_opt_level="02",
@@ -72,14 +90,12 @@ def main(args):
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
-        data_collator=SequenceConcatCollator(
-            tokenizer=tokenizer,
-            random_swapping=False,
-            max_length=max_length,
+        data_collator=data_adapters.PairCollator(
+            tokenizer=tokenizer, max_length=max_length
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
-        compute_metrics=compute_ppi_metrics
+        compute_metrics=compute_ppi_metrics,
     )
 
     trainer.train()
@@ -91,7 +107,7 @@ if __name__ == "__main__":
         "--ckpt",
         type=str,
         required=True,
-        choices=ankh_checkpoints(),
+        choices=esm_checkpoints(),
     )
     argparser.add_argument(
         "--ds_name",
@@ -106,5 +122,5 @@ if __name__ == "__main__":
         required=False,
     )
     args = argparser.parse_args()
-    args.ckpt = ankh_checkpoint_mapping(args.ckpt)
+    args.ckpt = esm_checkpoint_mapping(args.ckpt)
     main(args)

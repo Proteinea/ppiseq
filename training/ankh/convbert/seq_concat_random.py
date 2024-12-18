@@ -1,5 +1,6 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ['WANDB_PROJECT'] = 'PPIRefExperiments'
 # os.environ['WANDB_MODE'] = 'disabled'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
@@ -8,7 +9,7 @@ from transformers import AutoTokenizer
 from transformers import T5EncoderModel
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.data_adapters.collators import SequenceConcatCollator
-from ppi_research.models import SequenceConcatModel
+from ppi_research.models import SequenceConcatConvBERTModel
 from ppi_research.utils import create_run_name
 from transformers import Trainer
 from transformers import TrainingArguments
@@ -23,13 +24,14 @@ seed = 7
 set_seed(seed=seed)
 
 
-def main():
+def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
+    max_length = args.max_length
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = T5EncoderModel.from_pretrained(ckpt)
-    downstream_model = SequenceConcatModel(model)
+    downstream_model = SequenceConcatConvBERTModel(model)
 
     run_name = create_run_name(
         backbone=ckpt,
@@ -72,6 +74,7 @@ def main():
         data_collator=SequenceConcatCollator(
             tokenizer=tokenizer,
             random_swapping=True,
+            max_length=max_length
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
@@ -94,6 +97,12 @@ if __name__ == "__main__":
         type=str,
         required=True,
         choices=list(ppi_datasets.available_datasets.keys()),
+    )
+    argparser.add_argument(
+        "--max_length",
+        type=int,
+        default=None,
+        required=False,
     )
     args = argparser.parse_args()
     args.ckpt = ankh_checkpoint_mapping(args.ckpt)
