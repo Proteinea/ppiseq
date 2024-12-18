@@ -1,11 +1,17 @@
 from torch import nn
-from ppi_research.layers.poolers import global_mean_pooling1d
+from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 
 
 class AttnPoolAddModel(nn.Module):
-    def __init__(self, backbone):
+    def __init__(self, backbone, pooler, model_name, embedding_name):
         super().__init__()
-        self.backbone = backbone
+        self.backbone = BackbonePairEmbeddingExtraction(
+            backbone=backbone,
+            model_name=model_name,
+            embedding_name=embedding_name,
+            trainable=True,
+        )
+        self.pooler = pooler
         self.embed_dim = self.backbone.config.hidden_size
         self.output = nn.Linear(self.embed_dim, 1)
         self.attn = nn.MultiheadAttention(
@@ -30,12 +36,12 @@ class AttnPoolAddModel(nn.Module):
         attention_mask_2=None,
         labels=None,
     ):
-        protein_1_embed = self.backbone(
-            input_ids=protein_1, attention_mask=attention_mask_1
-        )[0]
-        protein_2_embed = self.backbone(
-            input_ids=protein_2, attention_mask=attention_mask_2
-        )[0]
+        protein_1_embed, protein_2_embed = self.backbone(
+            protein_1,
+            protein_2,
+            attention_mask_1,
+            attention_mask_2,
+        )
 
         attention_mask_1 = attention_mask_1.to(
             device=protein_1_embed.device,
@@ -64,8 +70,8 @@ class AttnPoolAddModel(nn.Module):
 
         output_1 = output_1 + protein_1_embed
         output_2 = output_2 + protein_2_embed
-        pooled_output_1 = global_mean_pooling1d(output_1, attention_mask_1)
-        pooled_output_2 = global_mean_pooling1d(output_2, attention_mask_2)
+        pooled_output_1 = self.pooler(output_1, attention_mask_1)
+        pooled_output_2 = self.pooler(output_2, attention_mask_2)
         pooled_output = pooled_output_1 + pooled_output_2
         logits = self.output(pooled_output)
 

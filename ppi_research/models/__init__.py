@@ -3,5 +3,5 @@ from ppi_research.models.perceiver_model import PerceiverModel
 from ppi_research.models.pooling_model import PoolingAdditionModel
 from ppi_research.models.simple_concat_model import SimpleConcatModel
 from ppi_research.models.sequence_concat_model import SequenceConcatModel
-from ppi_research.models.convbert.attention_model import AttnPoolAddConvBERTModel
-from ppi_research.models.convbert.sequence_concat_model import SequenceConcatConvBERTModel
+from ppi_research.models.convbert.attention_model import AttnPoolAddConvBERTModel # noqa
+from ppi_research.models.convbert.sequence_concat_model import SequenceConcatConvBERTModel # noqa

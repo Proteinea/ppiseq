@@ -1,9 +1,8 @@
-import torch
 from torch import nn
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 
 
-class SimpleConcatModel(nn.Module):
+class SingleAttnPoolAddModel(nn.Module):
     def __init__(self, backbone, pooler, model_name, embedding_name):
         super().__init__()
         self.backbone = BackbonePairEmbeddingExtraction(
@@ -13,8 +12,15 @@ class SimpleConcatModel(nn.Module):
             trainable=True,
         )
         self.embed_dim = self.backbone.config.hidden_size
+        self.output = nn.Linear(self.embed_dim, 1)
+        self.attn = nn.MultiheadAttention(
+            embed_dim=self.embed_dim,
+            num_heads=8,
+            dropout=0.0,
+            bias=False,
+            batch_first=True,
+        )
         self.pooler = pooler
-        self.output = nn.Linear(self.embed_dim * 2, 1)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -47,9 +53,16 @@ class SimpleConcatModel(nn.Module):
             dtype=protein_2_embed.dtype,
         )
 
-        pooled_output_1 = self.pooler(protein_1_embed, attention_mask_1)
-        pooled_output_2 = self.pooler(protein_2_embed, attention_mask_2)
-        pooled_output = torch.cat([pooled_output_1, pooled_output_2], dim=1)
+        output, _ = self.attn(
+            query=protein_1_embed,
+            key=protein_2_embed,
+            value=protein_2_embed,
+            key_padding_mask=attention_mask_2.log(),
+            need_weights=False,
+        )
+
+        output = output + protein_1_embed
+        pooled_output = self.pooler(output, attention_mask_1)
         logits = self.output(pooled_output)
 
         loss = None

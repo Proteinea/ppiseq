@@ -1,6 +1,7 @@
 from torch import nn
 from transformers.models import convbert
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
+import torch
 
 
 class AttnPoolAddConvBERTModel(nn.Module):
@@ -41,6 +42,14 @@ class AttnPoolAddConvBERTModel(nn.Module):
         self.output.bias.data.zero_()
         self.output.weight.data.uniform_(-initrange, initrange)
 
+    def _extract_embeddings(self, input_ids, attention_mask=None):
+        self.backbone.eval()
+        with torch.no_grad():
+            outputs = self.backbone(
+                input_ids=input_ids, attention_mask=attention_mask
+            )[0]
+        return outputs
+
     def forward(
         self,
         protein_1,
@@ -69,26 +78,16 @@ class AttnPoolAddConvBERTModel(nn.Module):
         protein_1_embed = self.convbert_layer(protein_1_embed)[0]
         protein_2_embed = self.convbert_layer(protein_2_embed)[0]
 
-        output_1, _ = self.attn(
+        output, _ = self.attn(
             query=protein_1_embed,
             key=protein_2_embed,
             value=protein_2_embed,
             key_padding_mask=attention_mask_2.log(),
             need_weights=False,
         )
-        output_2, _ = self.attn(
-            query=protein_2_embed,
-            key=protein_1_embed,
-            value=protein_1_embed,
-            key_padding_mask=attention_mask_1.log(),
-            need_weights=False,
-        )
 
-        output_1 = output_1 + protein_1_embed
-        output_2 = output_2 + protein_2_embed
-        pooled_output_1 = self.pooler(output_1, attention_mask_1)
-        pooled_output_2 = self.pooler(output_2, attention_mask_2)
-        pooled_output = pooled_output_1 + pooled_output_2
+        output = output + protein_1_embed
+        pooled_output = self.pooler(output, attention_mask_1)
         logits = self.output(pooled_output)
 
         loss = None
