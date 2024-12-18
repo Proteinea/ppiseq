@@ -5,6 +5,7 @@ from ppi_research.models.utils import BackboneConcatEmbeddingExtraction
 class SequenceConcatModel(nn.Module):
     def __init__(self, backbone, pooler, model_name, embedding_name):
         super().__init__()
+        self.embed_dim = backbone.config.hidden_size
         self.backbone = BackboneConcatEmbeddingExtraction(
             backbone=backbone,
             model_name=model_name,
@@ -12,7 +13,6 @@ class SequenceConcatModel(nn.Module):
             trainable=True,
         )
         self.pooler = pooler
-        self.embed_dim = self.backbone.config.hidden_size
         self.output = nn.Linear(self.embed_dim, 1)
         self.reset_parameters()
 
