@@ -1,6 +1,6 @@
 import os
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ["WANDB_MODE"] = "disabled"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
