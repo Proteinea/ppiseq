@@ -7,20 +7,20 @@ os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
-from transformers import T5Tokenizer
-from transformers import T5EncoderModel
+from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
-from ppi_research.utils import create_run_name, parse_common_args
+from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import AttnPoolAddConvBERTModel
+from ppi_research.preprocessing.prott5 import sequence_preprocessing
+from ppi_research.utils import create_run_name
+from ppi_research.utils import parse_common_args
+from ppi_research.utils import prott5_checkpoint_mapping
+from ppi_research.utils import prott5_checkpoints
+from ppi_research.utils import set_seed
+from transformers import T5EncoderModel
+from transformers import T5Tokenizer
 from transformers import Trainer
 from transformers import TrainingArguments
-from ppi_research import data_adapters
-from ppi_research.metrics import compute_ppi_metrics
-from ppi_research.utils import set_seed
-from ppi_research.utils import prott5_checkpoints
-from ppi_research.utils import prott5_checkpoint_mapping
-from ppi_research.preprocessing.prott5 import sequence_preprocessing
-
 
 seed = 7
 set_seed(seed=seed)

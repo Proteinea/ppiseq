@@ -1,6 +1,6 @@
 import torch
-from torch import nn
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
+from torch import nn
 
 
 class SimpleConcatModel(nn.Module):

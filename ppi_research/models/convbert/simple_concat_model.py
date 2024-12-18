@@ -1,7 +1,7 @@
 import torch
+from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 from transformers.models import convbert
-from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 
 
 class SimpleConcatModel(nn.Module):
@@ -66,12 +66,8 @@ class SimpleConcatModel(nn.Module):
             dtype=protein_2_embed.dtype,
         )
 
-        pooled_output_1 = self.pooler(
-            protein_1_embed, attention_mask_1
-        )
-        pooled_output_2 = self.pooler(
-            protein_2_embed, attention_mask_2
-        )
+        pooled_output_1 = self.pooler(protein_1_embed, attention_mask_1)
+        pooled_output_2 = self.pooler(protein_2_embed, attention_mask_2)
         pooled_output = torch.cat([pooled_output_1, pooled_output_2], dim=1)
         logits = self.output(pooled_output)
 

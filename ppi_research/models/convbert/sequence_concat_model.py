@@ -1,6 +1,6 @@
+from ppi_research.models.utils import BackboneConcatEmbeddingExtraction
 from torch import nn
 from transformers.models import convbert
-from ppi_research.models.utils import BackboneConcatEmbeddingExtraction
 
 
 class SequenceConcatConvBERTModel(nn.Module):

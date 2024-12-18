@@ -1,6 +1,7 @@
-from transformers import EvalPrediction
-from scipy.stats import spearmanr, pearsonr
+from scipy.stats import pearsonr
+from scipy.stats import spearmanr
 from sklearn.metrics import root_mean_squared_error
+from transformers import EvalPrediction
 
 
 def compute_spearman(p: EvalPrediction) -> float:

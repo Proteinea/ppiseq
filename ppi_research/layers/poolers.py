@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import torch
 from torch import nn
 
@@ -13,6 +14,17 @@ def global_mean_pooling1d(
     return x_masked.sum(1) / padding_mask.sum(1)
 
 
+def global_max_pooling1d(
+    x: torch.FloatTensor, padding_mask: torch.FloatTensor | None = None
+):
+    if padding_mask is None:
+        return torch.amax(x, dim=1)
+
+    padding_mask = padding_mask.to(device=x.device, dtype=torch.long)
+    x = x.masked_fill(padding_mask.logical_not(), -torch.inf)
+    return torch.amax(x, dim=1)
+
+
 class GlobalAvgPooling1D(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -23,6 +35,18 @@ class GlobalAvgPooling1D(nn.Module):
         padding_mask: torch.FloatTensor | None = None,
     ):
         return global_mean_pooling1d(x=x, padding_mask=padding_mask)
+
+
+class GlobalMaxPooling1D(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+
+    def forward(
+        self,
+        x: torch.FloatTensor,
+        padding_mask: torch.FloatTensor | None = None,
+    ):
+        return global_max_pooling1d(x=x, padding_mask=padding_mask)
 
 
 class AttentionPooling1D(nn.Module):
@@ -80,6 +104,8 @@ def get(identifier, *args, **kwargs):
     pooler = available_poolers.get(identifier)
     if pooler is None:
         available_pooler_names = list(available_poolers.keys())
-        raise ValueError("Expected `identifier` to be one of the following: "
-                         f"{available_pooler_names}. Received: {identifier}.")
+        raise ValueError(
+            "Expected `identifier` to be one of the following: "
+            f"{available_pooler_names}. Received: {identifier}."
+        )
     return pooler(*args, **kwargs)

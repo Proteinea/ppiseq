@@ -8,21 +8,21 @@ os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
-from transformers import AutoTokenizer
-from transformers import AutoModel
 from peft import LoraConfig
 from peft import get_peft_model
-from ppi_research.data_adapters import ppi_datasets
-from ppi_research.utils import create_run_name, parse_common_args
-from ppi_research.models import SimpleConcatModel
-from transformers import Trainer
-from transformers import TrainingArguments
 from ppi_research import data_adapters
+from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
-from ppi_research.utils import set_seed
+from ppi_research.models import SimpleConcatModel
+from ppi_research.utils import create_run_name
 from ppi_research.utils import esm_checkpoint_mapping
 from ppi_research.utils import esm_checkpoints
-
+from ppi_research.utils import parse_common_args
+from ppi_research.utils import set_seed
+from transformers import AutoModel
+from transformers import AutoTokenizer
+from transformers import Trainer
+from transformers import TrainingArguments
 
 seed = 7
 set_seed(seed=seed)
@@ -86,7 +86,7 @@ def main(args):
         seed=seed,
         load_best_model_at_end=True,
         save_total_limit=1,
-        metric_for_best_model='eval_validation_rmse',
+        metric_for_best_model="eval_validation_rmse",
         greater_is_better=False,
         save_strategy="epoch",
         report_to="wandb",

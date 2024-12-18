@@ -1,5 +1,5 @@
-from torch import nn
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
+from torch import nn
 
 
 class PoolingAdditionModel(nn.Module):
@@ -45,12 +45,8 @@ class PoolingAdditionModel(nn.Module):
             dtype=protein_2_embed.dtype,
         )
 
-        pooled_output_1 = self.pooler(
-            protein_1_embed, attention_mask_1
-        )
-        pooled_output_2 = self.pooler(
-            protein_2_embed, attention_mask_2
-        )
+        pooled_output_1 = self.pooler(protein_1_embed, attention_mask_1)
+        pooled_output_2 = self.pooler(protein_2_embed, attention_mask_2)
         pooled_output = pooled_output_1 + pooled_output_2
         logits = self.output(pooled_output)
 

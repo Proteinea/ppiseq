@@ -1,5 +1,5 @@
-from torch import nn
 from ppi_research.models.utils import BackboneConcatEmbeddingExtraction
+from torch import nn
 
 
 class SequenceConcatModel(nn.Module):

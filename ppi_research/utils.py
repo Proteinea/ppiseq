@@ -1,7 +1,9 @@
-import torch
-import random
-import numpy as np
 import argparse
+import random
+
+import numpy as np
+import torch
+
 from ppi_research.data_adapters import ppi_datasets
 
 available_esm_checkpoints = {

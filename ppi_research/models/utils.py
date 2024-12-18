@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import Dict
+
 import torch
 from torch import nn
 
@@ -11,8 +13,10 @@ def extract_embeddings(
     embedding_name: str | None = None,
 ):
     if not isinstance(model_inputs, dict):
-        raise ValueError("Expected `model_inputs` to be of type `dict`. "
-                         f"Received: {type(model_inputs)}.")
+        raise ValueError(
+            "Expected `model_inputs` to be of type `dict`. "
+            f"Received: {type(model_inputs)}."
+        )
 
     if trainable:
         output = model(**model_inputs)

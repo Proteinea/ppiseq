@@ -11,9 +11,10 @@ from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import SequenceConcatConvBERTModel
-from ppi_research.utils import create_run_name, parse_common_args
+from ppi_research.utils import create_run_name
 from ppi_research.utils import esm_checkpoint_mapping
 from ppi_research.utils import esm_checkpoints
+from ppi_research.utils import parse_common_args
 from ppi_research.utils import set_seed
 from transformers import AutoModel
 from transformers import AutoTokenizer

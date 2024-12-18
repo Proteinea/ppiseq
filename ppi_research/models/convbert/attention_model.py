@@ -1,6 +1,6 @@
+from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 from transformers.models import convbert
-from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 
 
 class AttnPoolAddConvBERTModel(nn.Module):
