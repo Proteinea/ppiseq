@@ -4,7 +4,7 @@ from ppi_research.layers import poolers
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ["WANDB_MODE"] = "disabled"
+# os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
@@ -13,20 +13,16 @@ from peft import get_peft_model
 from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
-from ppi_research.models import SimpleConcatModel
-from ppi_research.preprocessing.prott5 import sequence_preprocessing
+from ppi_research.models import EmbedConcatModel
 from ppi_research.utils import create_run_name
+from ppi_research.utils import esm_checkpoint_mapping
+from ppi_research.utils import esm_checkpoints
 from ppi_research.utils import parse_common_args
-from ppi_research.utils import prott5_checkpoint_mapping
-from ppi_research.utils import prott5_checkpoints
 from ppi_research.utils import set_seed
-from transformers import T5ForConditionalGeneration
-from transformers import T5Tokenizer
+from transformers import AutoModel
+from transformers import AutoTokenizer
 from transformers import Trainer
 from transformers import TrainingArguments
-
-seed = 7
-set_seed(seed=seed)
 
 
 def main(args):
@@ -34,13 +30,15 @@ def main(args):
     ds_name = args.ds_name
     max_length = args.max_length
     pooler_name = args.pooler
+    seed = args.seed
+    set_seed(seed=seed)
     print("Checkpoint:", ckpt)
 
-    tokenizer = T5Tokenizer.from_pretrained(ckpt)
-    model = T5ForConditionalGeneration.from_pretrained(ckpt)
+    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+    model = AutoModel.from_pretrained(ckpt)
     r = 16
     alpha = 32
-    target_modules = ["q", "v"]
+    target_modules = ["query", "value"]
     lora_config = LoraConfig(
         r=r,
         lora_alpha=alpha,
@@ -48,19 +46,19 @@ def main(args):
         bias="none",
         target_modules=target_modules,
     )
-    model = get_peft_model(model, lora_config).encoder
+    model = get_peft_model(model, lora_config)
 
     pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
-    downstream_model = SimpleConcatModel(
+    downstream_model = EmbedConcatModel(
         backbone=model,
         pooler=pooler,
-        model_name="prott5",
+        model_name="esm2",
         embedding_name="last_hidden_state",
     )
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="lora_simple_concat",
+        setup=f"lora_embed_concat{seed}",
         r=r,
         alpha=alpha,
         target_modules=target_modules,
@@ -68,20 +66,20 @@ def main(args):
     )
 
     training_args = TrainingArguments(
-        output_dir=f"/app/checkpoints/{run_name}_weights",
+        output_dir=run_name + "_weights",
         run_name=run_name,
-        num_train_epochs=20,
+        num_train_epochs=30,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         warmup_steps=1000,
-        learning_rate=1e-3,
+        learning_rate=5e-4,
         weight_decay=0.0,
         logging_dir=f"./logs_{run_name}",
         logging_steps=1,
         do_train=True,
         do_eval=True,
         eval_strategy="epoch",
-        gradient_accumulation_steps=16,
+        gradient_accumulation_steps=32,
         fp16=False,
         fp16_opt_level="02",
         seed=seed,
@@ -95,17 +93,13 @@ def main(args):
         save_safetensors=False,
     )
 
-    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        ds_name, sequence_preprocessing
-    )
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(ds_name)
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.PairCollator(
-            tokenizer=tokenizer,
-            max_length=max_length,
-            is_split_into_words=True,
+            tokenizer=tokenizer, max_length=max_length, random_swapping=True
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
@@ -116,6 +110,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = parse_common_args(checkpoints=prott5_checkpoints())
-    args.ckpt = prott5_checkpoint_mapping(args.ckpt)
+    args = parse_common_args(checkpoints=esm_checkpoints())
+    args.ckpt = esm_checkpoint_mapping(args.ckpt)
     main(args)

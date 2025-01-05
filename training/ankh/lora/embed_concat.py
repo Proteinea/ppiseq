@@ -13,7 +13,7 @@ from peft import get_peft_model
 from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
-from ppi_research.models import SimpleConcatModel
+from ppi_research.models import EmbedConcatModel
 from ppi_research.utils import ankh_checkpoint_mapping
 from ppi_research.utils import ankh_checkpoints
 from ppi_research.utils import create_run_name
@@ -24,15 +24,14 @@ from transformers import T5ForConditionalGeneration
 from transformers import Trainer
 from transformers import TrainingArguments
 
-seed = 7
-set_seed(seed=seed)
-
 
 def main(args):
     ckpt = args.ckpt
     ds_name = args.ds_name
     max_length = args.max_length
     pooler_name = args.pooler
+    seed = args.seed
+    set_seed(seed=seed)
     print("Checkpoint:", ckpt)
 
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
@@ -50,7 +49,7 @@ def main(args):
     model = get_peft_model(model, lora_config).encoder
 
     pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
-    downstream_model = SimpleConcatModel(
+    downstream_model = EmbedConcatModel(
         backbone=model,
         pooler=pooler,
         model_name="ankh",
@@ -59,7 +58,7 @@ def main(args):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="lora_simple_concat",
+        setup=f"lora_embed_concat{seed}",
         r=r,
         alpha=alpha,
         target_modules=target_modules,
@@ -69,18 +68,18 @@ def main(args):
     training_args = TrainingArguments(
         output_dir=run_name + "_weights",
         run_name=run_name,
-        num_train_epochs=20,
+        num_train_epochs=30,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         warmup_steps=1000,
-        learning_rate=1e-3,
+        learning_rate=5e-4,
         weight_decay=0.0,
         logging_dir=f"./logs_{run_name}",
         logging_steps=1,
         do_train=True,
         do_eval=True,
         eval_strategy="epoch",
-        gradient_accumulation_steps=16,
+        gradient_accumulation_steps=32,
         fp16=False,
         fp16_opt_level="02",
         seed=seed,
@@ -100,7 +99,7 @@ def main(args):
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.PairCollator(
-            tokenizer=tokenizer, max_length=max_length
+            tokenizer=tokenizer, max_length=max_length, random_swapping=True
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
