@@ -91,5 +91,11 @@ def parse_common_args(checkpoints):
         default="avg",
         required=False,
     )
+    argparser.add_argument(
+        "--seed",
+        type=int,
+        default=7,
+        required=False,
+    )
     args = argparser.parse_args()
     return args
