@@ -28,6 +28,31 @@ def load_skempi_ppi_dataset(preprocessing_function: Callable | None = None):
     return train_ds, {"validation": val_ds, "test": test_ds}
 
 
+def load_skempi2_ppi_dataset(preprocessing_function: Callable | None = None):
+    ds = load_dataset(
+        "proteinea/skempi2_ppi_dataset", data_dir="mutation splits"
+    )
+    train_ds = PPIDataset(
+        ds["train"],
+        sequence_column_names=["protein 1 sequence", "protein 2 sequence"],
+        label_column_name="affinity (pKd)",
+        preprocessing_function=preprocessing_function,
+    )
+    val_ds = PPIDataset(
+        ds["validation"],
+        sequence_column_names=["protein 1 sequence", "protein 2 sequence"],
+        label_column_name="affinity (pKd)",
+        preprocessing_function=preprocessing_function,
+    )
+    test_ds = PPIDataset(
+        ds["test"],
+        sequence_column_names=["protein 1 sequence", "protein 2 sequence"],
+        label_column_name="affinity (pKd)",
+        preprocessing_function=preprocessing_function,
+    )
+    return train_ds, {"validation": val_ds, "test": test_ds}
+
+
 def load_ppi_deepdirect_dataset(
     preprocessing_function: Callable | None = None,
 ):
@@ -156,6 +181,7 @@ def load_inhouse_fc2ra_and_fc2rb_mixture(
 
 available_datasets = {
     "skempi": load_skempi_ppi_dataset,
+    "skempi2": load_skempi2_ppi_dataset,
     "peer": load_peer_ppi_dataset,
     "deepdirect": load_ppi_deepdirect_dataset,
     "fc2ra": load_inhouse_fc2ra,
