@@ -1,14 +1,19 @@
+from ppi_research.models.utils import BackboneConcatEmbeddingExtraction
 from torch import nn
 from transformers.models import convbert
-import torch
-from ppi_research.layers.poolers import global_mean_pooling1d
 
 
 class SequenceConcatConvBERTModel(nn.Module):
-    def __init__(self, backbone):
+    def __init__(self, backbone, pooler, model_name, embedding_name):
         super().__init__()
-        self.backbone = backbone
-        self.embed_dim = self.backbone.config.hidden_size
+        self.embed_dim = backbone.config.hidden_size
+        self.backbone = BackboneConcatEmbeddingExtraction(
+            backbone=backbone,
+            model_name=model_name,
+            embedding_name=embedding_name,
+            trainable=False,
+        )
+        self.pooler = pooler
 
         convbert_config = convbert.ConvBertConfig(
             hidden_size=self.embed_dim,
@@ -30,23 +35,15 @@ class SequenceConcatConvBERTModel(nn.Module):
         self.output.bias.data.zero_()
         self.output.weight.data.uniform_(-initrange, initrange)
 
-    def _extract_embeddings(self, input_ids, attention_mask=None):
-        self.backbone.eval()
-        with torch.no_grad():
-            outputs = self.backbone(
-                input_ids=input_ids, attention_mask=attention_mask
-            )[0]
-        return outputs
-
     def forward(self, input_ids, attention_mask=None, labels=None):
-        embed = self._extract_embeddings(input_ids, attention_mask)
+        embed = self.backbone(input_ids, attention_mask)
         embed = self.convbert_layer(embed)[0]
 
         attention_mask = attention_mask.to(
             device=embed.device,
             dtype=embed.dtype,
         )
-        pooled_output = global_mean_pooling1d(embed, attention_mask)
+        pooled_output = self.pooler(embed, attention_mask)
         logits = self.output(pooled_output)
 
         loss = None

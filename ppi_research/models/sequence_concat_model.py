@@ -1,12 +1,18 @@
+from ppi_research.models.utils import BackboneConcatEmbeddingExtraction
 from torch import nn
-from ppi_research.layers.poolers import global_mean_pooling1d
 
 
 class SequenceConcatModel(nn.Module):
-    def __init__(self, backbone):
+    def __init__(self, backbone, pooler, model_name, embedding_name):
         super().__init__()
-        self.backbone = backbone
-        self.embed_dim = self.backbone.config.hidden_size
+        self.embed_dim = backbone.config.hidden_size
+        self.backbone = BackboneConcatEmbeddingExtraction(
+            backbone=backbone,
+            model_name=model_name,
+            embedding_name=embedding_name,
+            trainable=True,
+        )
+        self.pooler = pooler
         self.output = nn.Linear(self.embed_dim, 1)
         self.reset_parameters()
 
@@ -16,15 +22,13 @@ class SequenceConcatModel(nn.Module):
         self.output.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, input_ids, attention_mask=None, labels=None):
-        embed = self.backbone(
-            input_ids=input_ids, attention_mask=attention_mask
-        )[0]
+        embed = self.backbone(input_ids, attention_mask)
 
         attention_mask = attention_mask.to(
             device=embed.device,
             dtype=embed.dtype,
         )
-        pooled_output = global_mean_pooling1d(embed, attention_mask)
+        pooled_output = self.pooler(embed, attention_mask)
         logits = self.output(pooled_output)
 
         loss = None

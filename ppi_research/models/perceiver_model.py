@@ -1,20 +1,29 @@
-from torch import nn
-from ppi_research.layers.poolers import global_mean_pooling1d
 from ppi_research.layers.perceiver import Perceiver
+from ppi_research.models.utils import BackbonePairEmbeddingExtraction
+from torch import nn
 
 
 class PerceiverModel(nn.Module):
     def __init__(
         self,
         backbone,
+        pooler,
+        model_name,
+        embedding_name,
         num_latents=512,
         num_heads=8,
         attn_dropout=0.0,
         bias=False,
     ):
         super().__init__()
-        self.backbone = backbone
-        self.embed_dim = self.backbone.config.hidden_size
+        self.embed_dim = backbone.config.hidden_size
+        self.backbone = BackbonePairEmbeddingExtraction(
+            backbone=backbone,
+            model_name=model_name,
+            embedding_name=embedding_name,
+            trainable=True,
+        )
+        self.pooler = pooler
         self.output = nn.Linear(self.embed_dim, 1)
         self.perceiver = Perceiver(
             embed_dim=self.embed_dim,
@@ -38,12 +47,12 @@ class PerceiverModel(nn.Module):
         attention_mask_2=None,
         labels=None,
     ):
-        protein_1_embed = self.backbone(
-            input_ids=protein_1, attention_mask=attention_mask_1
-        )[0]
-        protein_2_embed = self.backbone(
-            input_ids=protein_2, attention_mask=attention_mask_2
-        )[0]
+        protein_1_embed, protein_2_embed = self.backbone(
+            protein_1,
+            protein_2,
+            attention_mask_1,
+            attention_mask_2,
+        )
         output_1 = self.perceiver(
             inputs=protein_1_embed, attention_mask=attention_mask_1
         )
@@ -51,7 +60,7 @@ class PerceiverModel(nn.Module):
             inputs=protein_2_embed, attention_mask=attention_mask_2
         )
         output = output_1 + output_2
-        pooled_output = global_mean_pooling1d(output)
+        pooled_output = self.pooler(output)
         logits = self.output(pooled_output)
 
         loss = None

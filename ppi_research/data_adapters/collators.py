@@ -10,16 +10,28 @@ class PairCollator:
         tokenizer: Callable,
         max_length: int | None = None,
         is_split_into_words: bool = False,
+        random_swapping=False,
+        swapping_prob=0.5,
     ):
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.is_split_into_words = is_split_into_words
+        self.random_swapping = random_swapping
+        self.swapping_prob = swapping_prob
 
     def __call__(self, batch):
         seqs_1, seqs_2, labels = [], [], []
         for b in batch:
-            seqs_1.append(b["protein_1"])
-            seqs_2.append(b["protein_2"])
+            if self.random_swapping:
+                if random.random() < self.swapping_prob:
+                    seqs_1.append(b["protein_1"])
+                    seqs_2.append(b["protein_2"])
+                else:
+                    seqs_1.append(b["protein_2"])
+                    seqs_2.append(b["protein_1"])
+            else:
+                seqs_1.append(b["protein_1"])
+                seqs_2.append(b["protein_2"])
             labels.append(b["affinity"])
 
         seqs_1_encoded = self.tokenizer(

@@ -1,6 +1,10 @@
-import torch
+import argparse
 import random
+
 import numpy as np
+import torch
+
+from ppi_research.data_adapters import ppi_datasets
 
 available_esm_checkpoints = {
     "esm_650m": "facebook/esm2_t33_650M_UR50D",
@@ -59,3 +63,39 @@ def prott5_checkpoints():
 
 def prott5_checkpoint_mapping(name):
     return available_prott5_checkpoints[name]
+
+
+def parse_common_args(checkpoints):
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument(
+        "--ckpt",
+        type=str,
+        required=True,
+        choices=checkpoints,
+    )
+    argparser.add_argument(
+        "--ds_name",
+        type=str,
+        required=True,
+        choices=list(ppi_datasets.available_datasets.keys()),
+    )
+    argparser.add_argument(
+        "--max_length",
+        type=int,
+        default=None,
+        required=False,
+    )
+    argparser.add_argument(
+        "--pooler",
+        type=str,
+        default="avg",
+        required=False,
+    )
+    argparser.add_argument(
+        "--seed",
+        type=int,
+        default=7,
+        required=False,
+    )
+    args = argparser.parse_args()
+    return args

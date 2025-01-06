@@ -10,14 +10,15 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
-from ppi_research.models import AttnPoolAddConvBERTModel
-from ppi_research.utils import ankh_checkpoint_mapping
-from ppi_research.utils import ankh_checkpoints
+from ppi_research.models import EmbedConcatConvBERTModel
+from ppi_research.preprocessing.prott5 import sequence_preprocessing
 from ppi_research.utils import create_run_name
 from ppi_research.utils import parse_common_args
+from ppi_research.utils import prott5_checkpoint_mapping
+from ppi_research.utils import prott5_checkpoints
 from ppi_research.utils import set_seed
-from transformers import AutoTokenizer
 from transformers import T5EncoderModel
+from transformers import T5Tokenizer
 from transformers import Trainer
 from transformers import TrainingArguments
 
@@ -30,20 +31,20 @@ def main(args):
     seed = args.seed
     set_seed(seed=seed)
     print("Checkpoint:", ckpt)
-    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+    tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5EncoderModel.from_pretrained(ckpt)
 
     pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
-    downstream_model = AttnPoolAddConvBERTModel(
+    downstream_model = EmbedConcatConvBERTModel(
         backbone=model,
         pooler=pooler,
-        model_name="ankh",
+        model_name="prott5",
         embedding_name="last_hidden_state",
     )
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="convbert_attn_pooled_addition",
+        setup="convbert_embed_concat",
         pooler=pooler_name,
         seed=seed,
     )
@@ -76,13 +77,18 @@ def main(args):
         save_safetensors=False,
     )
 
-    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(ds_name)
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
+        ds_name, sequence_preprocessing
+    )
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.PairCollator(
-            tokenizer=tokenizer, max_length=max_length
+            tokenizer=tokenizer,
+            is_split_into_words=True,
+            max_length=max_length,
+            random_swapping=True,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
@@ -93,6 +99,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = parse_common_args(checkpoints=ankh_checkpoints())
-    args.ckpt = ankh_checkpoint_mapping(args.ckpt)
+    args = parse_common_args(checkpoints=prott5_checkpoints())
+    args.ckpt = prott5_checkpoint_mapping(args.ckpt)
     main(args)

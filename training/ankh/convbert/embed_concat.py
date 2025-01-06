@@ -10,7 +10,7 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
-from ppi_research.models import AttnPoolAddConvBERTModel
+from ppi_research.models import EmbedConcatConvBERTModel
 from ppi_research.utils import ankh_checkpoint_mapping
 from ppi_research.utils import ankh_checkpoints
 from ppi_research.utils import create_run_name
@@ -34,7 +34,7 @@ def main(args):
     model = T5EncoderModel.from_pretrained(ckpt)
 
     pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
-    downstream_model = AttnPoolAddConvBERTModel(
+    downstream_model = EmbedConcatConvBERTModel(
         backbone=model,
         pooler=pooler,
         model_name="ankh",
@@ -43,7 +43,7 @@ def main(args):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="convbert_attn_pooled_addition",
+        setup="convbert_embed_concat",
         pooler=pooler_name,
         seed=seed,
     )
@@ -82,7 +82,7 @@ def main(args):
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.PairCollator(
-            tokenizer=tokenizer, max_length=max_length
+            tokenizer=tokenizer, max_length=max_length, random_swapping=True
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
