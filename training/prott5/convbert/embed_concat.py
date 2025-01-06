@@ -44,8 +44,9 @@ def main(args):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup=f"convbert_embed_concat{seed}",
+        setup="convbert_embed_concat",
         pooler=pooler_name,
+        seed=seed,
     )
 
     training_args = TrainingArguments(

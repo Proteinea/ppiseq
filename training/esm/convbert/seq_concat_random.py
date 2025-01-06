@@ -43,8 +43,9 @@ def main(args):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup=f"convbert_sequence_concat_randomized{seed}",
+        setup="convbert_sequence_concat_randomized",
         pooler=pooler_name,
+        seed=seed,
     )
 
     training_args = TrainingArguments(

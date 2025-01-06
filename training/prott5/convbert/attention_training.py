@@ -44,8 +44,9 @@ def main(args):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup=f"convbert_attn_pooled_addition{seed}",
+        setup="convbert_attn_pooled_addition",
         pooler=pooler_name,
+        seed=seed,
     )
 
     training_args = TrainingArguments(

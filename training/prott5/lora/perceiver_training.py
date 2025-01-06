@@ -68,6 +68,7 @@ def main(args):
         alpha=alpha,
         target_modules=target_modules,
         pooler=pooler_name,
+        seed=seed,
     )
 
     training_args = TrainingArguments(

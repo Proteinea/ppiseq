@@ -58,11 +58,12 @@ def main(args):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup=f"lora_sequence_concat_randomized{seed}",
+        setup="lora_sequence_concat_randomized",
         r=r,
         alpha=alpha,
         target_modules=target_modules,
         pooler=pooler_name,
+        seed=seed,
     )
 
     training_args = TrainingArguments(

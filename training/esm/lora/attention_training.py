@@ -56,11 +56,12 @@ def main(args):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup=f"lora_attn_pooled_addition{seed}",
+        setup="lora_attn_pooled_addition",
         r=r,
         alpha=alpha,
         target_modules=target_modules,
         pooler=pooler_name,
+        seed=seed,
     )
 
     training_args = TrainingArguments(
