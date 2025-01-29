@@ -13,91 +13,94 @@ from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import PerceiverModel
-from ppi_research.utils import ankh_checkpoint_mapping
-from ppi_research.utils import ankh_checkpoints
 from ppi_research.utils import create_run_name
-from ppi_research.utils import parse_common_args
 from ppi_research.utils import set_seed
 from transformers import AutoTokenizer
 from transformers import T5ForConditionalGeneration
 from transformers import Trainer
 from transformers import TrainingArguments
+import hydra
+from omegaconf import DictConfig
 
-seed = 7
-set_seed(seed=seed)
 
-
-def main(args):
-    ckpt = args.ckpt
-    ds_name = args.ds_name
-    max_length = args.max_length
-    pooler_name = args.pooler
+@hydra.main(
+    config_path="config",
+    config_name="train_config",
+    version_base=None,
+)
+def main(cfg: DictConfig):
+    ckpt = cfg.ankh.ckpt
+    max_length = cfg.max_length
+    seed = cfg.train_config.seed
     print("Checkpoint:", ckpt)
+    set_seed(seed=seed)
 
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = T5ForConditionalGeneration.from_pretrained(ckpt)
-    r = 16
-    alpha = 32
-    target_modules = ["q", "v"]
+
     lora_config = LoraConfig(
-        r=r,
-        lora_alpha=alpha,
-        lora_dropout=0.0,
-        bias="none",
-        target_modules=target_modules,
+        r=cfg.ankh.lora.r,
+        lora_alpha=cfg.ankh.lora.alpha,
+        lora_dropout=cfg.ankh.lora.dropout,
+        bias=cfg.ankh.lora.bias,
+        target_modules=cfg.ankh.lora.target_modules,
     )
 
     model = get_peft_model(model, lora_config).encoder
-    num_latents = 512
-    pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
+    pooler = poolers.get(
+        cfg.downstream_config.pooler,
+        embed_dim=model.config.hidden_size,
+    )
     downstream_model = PerceiverModel(
         backbone=model,
         pooler=pooler,
         model_name="ankh",
         embedding_name="last_hidden_state",
-        num_latents=num_latents,
+        num_latents=cfg.perceiver_config.num_latents,
     )
 
     run_name = create_run_name(
         backbone=ckpt,
         setup="lora_perceiver",
-        r=r,
-        num_latents=num_latents,
-        alpha=alpha,
-        target_modules=target_modules,
-        pooler=pooler_name,
+        r=cfg.ankh.lora.r,
+        num_latents=cfg.perceiver_config.num_latents,
+        alpha=cfg.ankh.lora.alpha,
+        target_modules=cfg.ankh.lora.target_modules,
+        pooler=cfg.downstream_config.pooler,
         seed=seed,
     )
 
     training_args = TrainingArguments(
         output_dir=run_name + "_weights",
         run_name=run_name,
-        num_train_epochs=20,
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
-        warmup_steps=1000,
-        learning_rate=1e-3,
-        weight_decay=0.0,
+        num_train_epochs=cfg.train_config.num_train_epochs,
+        per_device_train_batch_size=cfg.train_config.per_device_train_batch_size, # noqa
+        per_device_eval_batch_size=cfg.train_config.per_device_eval_batch_size,
+        warmup_steps=cfg.train_config.warmup_steps,
+        learning_rate=cfg.train_config.learning_rate,
+        weight_decay=cfg.train_config.weight_decay,
         logging_dir=f"./logs_{run_name}",
-        logging_steps=1,
+        logging_steps=cfg.train_config.logging_steps,
         do_train=True,
         do_eval=True,
-        eval_strategy="epoch",
-        gradient_accumulation_steps=16,
+        eval_strategy=cfg.train_config.eval_strategy,
+        gradient_accumulation_steps=cfg.train_config.gradient_accumulation_steps,  # noqa
         fp16=False,
         fp16_opt_level="02",
         seed=seed,
-        load_best_model_at_end=True,
-        save_total_limit=1,
-        metric_for_best_model="eval_validation_rmse",
-        greater_is_better=False,
-        save_strategy="epoch",
+        load_best_model_at_end=cfg.train_config.load_best_model_at_end,
+        save_total_limit=cfg.train_config.save_total_limit,
+        metric_for_best_model=cfg.train_config.metric_for_best_model,
+        greater_is_better=cfg.train_config.greater_is_better,
+        save_strategy=cfg.train_config.save_strategy,
         report_to="wandb",
-        remove_unused_columns=False,
-        save_safetensors=False,
+        remove_unused_columns=cfg.train_config.remove_unused_columns,
+        save_safetensors=cfg.train_config.save_safetensors,
     )
 
-    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(ds_name)
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
+        cfg.dataset_config.dataset_name,
+    )
 
     trainer = Trainer(
         model=downstream_model,
@@ -114,6 +117,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = parse_common_args(checkpoints=ankh_checkpoints())
-    args.ckpt = ankh_checkpoint_mapping(args.ckpt)
-    main(args)
+    main()

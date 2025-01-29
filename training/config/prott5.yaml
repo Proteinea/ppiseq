@@ -1,0 +1,10 @@
+ckpt: Rostlab/prot_t5_xl_uniref50
+max_length: 1024
+
+
+lora_config:
+  target_modules:
+    - "q"
+    - "v"
+  r: 16
+  alpha: 32

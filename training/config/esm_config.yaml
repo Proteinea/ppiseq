@@ -1,0 +1,13 @@
+ckpt: "facebook/esm2_t36_3B_UR50S"
+max_length: 1024
+
+lora_config:
+  target_modules:
+    - "query"
+    - "value"
+  r: 16
+  alpha: 32
+  bias: none
+  dropout: 0.0
+  use_dora: false
+

@@ -15,40 +15,43 @@ from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import EmbedConcatModel
 from ppi_research.utils import create_run_name
-from ppi_research.utils import esm_checkpoint_mapping
-from ppi_research.utils import esm_checkpoints
-from ppi_research.utils import parse_common_args
 from ppi_research.utils import set_seed
 from transformers import AutoModel
 from transformers import AutoTokenizer
 from transformers import Trainer
 from transformers import TrainingArguments
+import hydra
+from omegaconf import DictConfig
 
 
-def main(args):
-    ckpt = args.ckpt
-    ds_name = args.ds_name
-    max_length = args.max_length
-    pooler_name = args.pooler
-    seed = args.seed
+@hydra.main(
+    config_path="config",
+    config_name="train_config",
+    version_base=None,
+)
+def main(cfg: DictConfig):
+    ckpt = cfg.esm.ckpt
+    max_length = cfg.dataset_config.max_length
+    seed = cfg.train_config.seed
     set_seed(seed=seed)
     print("Checkpoint:", ckpt)
 
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = AutoModel.from_pretrained(ckpt)
-    r = 16
-    alpha = 32
-    target_modules = ["query", "value"]
+
     lora_config = LoraConfig(
-        r=r,
-        lora_alpha=alpha,
-        lora_dropout=0.0,
-        bias="none",
-        target_modules=target_modules,
+        r=cfg.esm.lora.r,
+        lora_alpha=cfg.esm.lora.alpha,
+        lora_dropout=cfg.esm.lora.dropout,
+        bias=cfg.esm.lora.bias,
+        target_modules=cfg.esm.lora.target_modules,
     )
     model = get_peft_model(model, lora_config)
 
-    pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
+    pooler = poolers.get(
+        cfg.downstream_config.pooler,
+        embed_dim=model.config.hidden_size,
+    )
     downstream_model = EmbedConcatModel(
         backbone=model,
         pooler=pooler,
@@ -59,10 +62,10 @@ def main(args):
     run_name = create_run_name(
         backbone=ckpt,
         setup="lora_embed_concat",
-        r=r,
-        alpha=alpha,
-        target_modules=target_modules,
-        pooler=pooler_name,
+        r=cfg.esm.lora.r,
+        alpha=cfg.esm.lora.alpha,
+        target_modules=cfg.esm.lora.target_modules,
+        pooler=cfg.downstream_config.pooler,
         seed=seed,
     )
 
@@ -94,7 +97,9 @@ def main(args):
         save_safetensors=False,
     )
 
-    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(ds_name)
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
+        cfg.dataset_config.dataset_name,
+    )
 
     trainer = Trainer(
         model=downstream_model,
@@ -111,6 +116,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = parse_common_args(checkpoints=esm_checkpoints())
-    args.ckpt = esm_checkpoint_mapping(args.ckpt)
-    main(args)
+    main()

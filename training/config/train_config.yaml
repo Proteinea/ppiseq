@@ -1,0 +1,34 @@
+defaults:
+  - esm_config
+  - ankh_config
+
+
+downstream_config:
+  pooler: avg
+
+
+dataset_config:
+  dataset_name: "ppi"
+
+
+perceiver_config:
+  num_latents: 512
+
+
+train_config:
+  num_train_epochs: 30
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  warmup_steps: 1000
+  learning_rate: 5e-4
+  weight_decay: 0.0
+  logging_steps: 1
+  eval_strategy: "epoch"
+  gradient_accumulation_steps: 32
+  save_total_limit: 1
+  metric_for_best_model: "eval_validation_spearmanr"
+  greater_is_better: true
+  save_strategy: "epoch"
+  seed: 7
+  remove_unused_columns: false
+  save_safetensors: false
