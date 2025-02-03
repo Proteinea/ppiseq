@@ -61,68 +61,67 @@ class MultiChainModel(nn.Module):
         self.output.bias.data.zero_()
         self.output.weight.data.uniform_(-initrange, initrange)
 
-    def _process_chains(
+    def process_chains(
         self,
         protein_embed: torch.FloatTensor,
         chain_ids: torch.LongTensor,
     ) -> torch.FloatTensor:
-        pooled_chains = []
-        unique_chain_ids = torch.unique(chain_ids)
-        for chain_id in unique_chain_ids:
-            chain_mask = chain_ids == chain_id
-            chain_embed = protein_embed[chain_mask, ...]
-            pooled_chain = self.chains_pooler(chain_embed, dim=0)
-            pooled_chains.append(pooled_chain)
+        pooled_chains = [
+            self.chains_pooler(
+                protein_embed[chain_ids == chain_id, ...], dim=0,
+            )
+            for chain_id in torch.unique(chain_ids)
+        ]
 
         return torch.stack(pooled_chains, dim=0)
 
     def forward(
         self,
-        protein_1_input_ids: torch.LongTensor,
-        protein_2_input_ids: torch.LongTensor,
-        protein_1_attention_mask: torch.LongTensor | None = None,
-        protein_2_attention_mask: torch.LongTensor | None = None,
-        protein_1_chain_ids: torch.LongTensor | None = None,
-        protein_2_chain_ids: torch.LongTensor | None = None,
+        input_ids_1: torch.LongTensor,
+        input_ids_2: torch.LongTensor,
+        attention_mask_1: torch.LongTensor | None = None,
+        attention_mask_2: torch.LongTensor | None = None,
+        chain_ids_1: torch.LongTensor | None = None,
+        chain_ids_2: torch.LongTensor | None = None,
         labels: torch.FloatTensor | None = None,
     ):
         protein_1_embed, protein_2_embed = self.backbone(
-            protein_1_input_ids,
-            protein_2_input_ids,
-            protein_1_attention_mask,
-            protein_2_attention_mask,
+            input_ids_1,
+            input_ids_2,
+            attention_mask_1,
+            attention_mask_2,
         )
 
         pooled_sequences_1 = self.sequence_pooler(
-            protein_1_embed, protein_1_attention_mask, dim=1,
+            protein_1_embed, attention_mask_1, dim=1,
         )
+
         pooled_sequences_2 = self.sequence_pooler(
-            protein_2_embed, protein_2_attention_mask, dim=1,
+            protein_2_embed, attention_mask_2, dim=1,
         )
 
-        chains_1_embed = None
-        chains_2_embed = None
-
-        if protein_1_chain_ids is not None:
-            chains_1_embed = self._process_chains(
-                pooled_sequences_1, protein_1_chain_ids,
-            )
-
-        if protein_2_chain_ids is not None:
-            chains_2_embed = self._process_chains(
-                pooled_sequences_2, protein_2_chain_ids
-            )
-
-        if chains_1_embed is not None and chains_2_embed is not None:
-            chains_embed = aggregate_chains(
-                chains_1_embed, chains_2_embed, self.aggregation_method
+        chains_1_embed = chains_2_embed = None
+        if chain_ids_1 is not None:
+            chains_1_embed = self.process_chains(
+                pooled_sequences_1, chain_ids_1,
             )
         else:
             chains_1_embed = pooled_sequences_1
+
+        if chain_ids_2 is not None:
+            chains_2_embed = self.process_chains(
+                pooled_sequences_2, chain_ids_2
+            )
+        else:
             chains_2_embed = pooled_sequences_2
+
+        chains_embed = aggregate_chains(
+            chains_1_embed, chains_2_embed, self.aggregation_method
+        )
 
         if self.use_ffn:
             chains_embed = self.ffn(chains_embed)
+
         logits = self.output(chains_embed)
 
         loss = None

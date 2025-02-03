@@ -108,7 +108,11 @@ class SequenceConcatCollator:
 
         for b in batch:
             if self.random_swapping:
-                inputs = randomly_swap_sequences(b["protein_1"], b["protein_2"], self.swapping_prob)
+                inputs = randomly_swap_sequences(
+                    b["protein_1"],
+                    b["protein_2"],
+                    self.swapping_prob,
+                )
             else:
                 inputs = (b["protein_1"], b["protein_2"])
 
@@ -142,10 +146,12 @@ class MultiChainCollator:
         tokenizer,
         max_length: int | None = None,
         is_split_into_words: bool = False,
+        preprocessing_function: Callable | None = None,
     ):
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.is_split_into_words = is_split_into_words
+        self.preprocessing_function = preprocessing_function
 
     def __call__(self, batch: list[Dict[str, Any]]):
         sequences_1 = []
