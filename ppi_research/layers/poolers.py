@@ -5,24 +5,28 @@ from torch import nn
 
 
 def global_mean_pooling1d(
-    x: torch.FloatTensor, padding_mask: torch.FloatTensor | None = None
+    x: torch.FloatTensor,
+    padding_mask: torch.FloatTensor | None = None,
+    dim: int = 1,
 ):
     if padding_mask is None:
-        return torch.mean(x, dim=1)
+        return torch.mean(x, dim=dim)
 
     x_masked = x * padding_mask.unsqueeze(-1)
-    return x_masked.sum(1) / padding_mask.sum(1)
+    return x_masked.sum(dim=dim) / padding_mask.sum(dim=dim)
 
 
 def global_max_pooling1d(
-    x: torch.FloatTensor, padding_mask: torch.FloatTensor | None = None
+    x: torch.FloatTensor,
+    padding_mask: torch.FloatTensor | None = None,
+    dim: int = 1,
 ):
     if padding_mask is None:
-        return torch.amax(x, dim=1)
+        return torch.amax(x, dim=dim)
 
     padding_mask = padding_mask.to(device=x.device, dtype=torch.long)
     x = x.masked_fill(padding_mask.logical_not(), -torch.inf)
-    return torch.amax(x, dim=1)
+    return torch.amax(x, dim=dim)
 
 
 class GlobalAvgPooling1D(nn.Module):
@@ -33,8 +37,9 @@ class GlobalAvgPooling1D(nn.Module):
         self,
         x: torch.FloatTensor,
         padding_mask: torch.FloatTensor | None = None,
+        dim: int = 1,
     ):
-        return global_mean_pooling1d(x=x, padding_mask=padding_mask)
+        return global_mean_pooling1d(x=x, padding_mask=padding_mask, dim=dim)
 
 
 class GlobalMaxPooling1D(nn.Module):
@@ -45,8 +50,9 @@ class GlobalMaxPooling1D(nn.Module):
         self,
         x: torch.FloatTensor,
         padding_mask: torch.FloatTensor | None = None,
+        dim: int = 1,
     ):
-        return global_max_pooling1d(x=x, padding_mask=padding_mask)
+        return global_max_pooling1d(x=x, padding_mask=padding_mask, dim=dim)
 
 
 class AttentionPooling1D(nn.Module):
@@ -58,6 +64,7 @@ class AttentionPooling1D(nn.Module):
         self,
         x: torch.FloatTensor,
         padding_mask: torch.FloatTensor | None = None,
+        dim: int = 1,
     ):
         outputs = self.w_proj(x).squeeze(-1)
 
@@ -68,7 +75,7 @@ class AttentionPooling1D(nn.Module):
             )
 
         probs = nn.functional.softmax(outputs, dim=-1)
-        return torch.sum(x * probs.unsqueeze(-1), dim=1)
+        return torch.sum(x * probs.unsqueeze(-1), dim=dim)
 
 
 class GatedPooling1D(nn.Module):
@@ -80,6 +87,7 @@ class GatedPooling1D(nn.Module):
         self,
         x: torch.FloatTensor,
         padding_mask: torch.FloatTensor | None = None,
+        dim: int = 1,
     ):
         outputs = self.w_proj(x).squeeze(-1)
 
@@ -90,7 +98,7 @@ class GatedPooling1D(nn.Module):
             )
 
         gates = nn.functional.sigmoid(outputs)
-        return torch.sum(x * gates.unsqueeze(-1), dim=1)
+        return torch.sum(x * gates.unsqueeze(-1), dim=dim)
 
 
 available_poolers = {

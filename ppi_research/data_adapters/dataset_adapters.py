@@ -10,7 +10,6 @@ class PPIDataset(TorchDataset):
         hf_ds: HFDataset,
         sequence_column_names: typing.List[str],
         label_column_name: str,
-        preprocessing_function: typing.Callable | None = None,
     ):
         num_cols = len(sequence_column_names)
         if num_cols != 2:
@@ -19,15 +18,9 @@ class PPIDataset(TorchDataset):
                 f"a column name. Received: {num_cols}"
             )
 
-        if preprocessing_function is not None and not callable(
-            preprocessing_function
-        ):
-            raise ValueError("`preprocessing_function` is not callable.")
-
         self.hf_ds = hf_ds
         self.sequence_column_names = sequence_column_names
         self.label_column_name = label_column_name
-        self.preprocessing_function = preprocessing_function
 
     def __len__(self):
         return self.hf_ds.num_rows
@@ -36,10 +29,6 @@ class PPIDataset(TorchDataset):
         seq_1 = self.hf_ds[self.sequence_column_names[0]][idx]
         seq_2 = self.hf_ds[self.sequence_column_names[1]][idx]
         label = self.hf_ds[self.label_column_name][idx]
-
-        if self.preprocessing_function is not None:
-            seq_1 = self.preprocessing_function(seq_1)
-            seq_2 = self.preprocessing_function(seq_2)
 
         return {
             "affinity": label,

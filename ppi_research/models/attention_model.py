@@ -3,7 +3,14 @@ from torch import nn
 
 
 class AttnPoolAddModel(nn.Module):
-    def __init__(self, backbone, pooler, model_name, embedding_name):
+    def __init__(
+        self,
+        backbone,
+        pooler,
+        model_name,
+        embedding_name,
+        shared=True,
+    ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.backbone = BackbonePairEmbeddingExtraction(
@@ -13,14 +20,31 @@ class AttnPoolAddModel(nn.Module):
             trainable=True,
         )
         self.pooler = pooler
+        if shared:
+            self.attn = nn.MultiheadAttention(
+                embed_dim=self.embed_dim,
+                num_heads=8,
+                dropout=0.0,
+                bias=False,
+                batch_first=True,
+            )
+        else:
+            self.attn_1 = nn.MultiheadAttention(
+                embed_dim=self.embed_dim,
+                num_heads=8,
+                dropout=0.0,
+                bias=False,
+                batch_first=True,
+            )
+            self.attn_2 = nn.MultiheadAttention(
+                embed_dim=self.embed_dim,
+                num_heads=8,
+                dropout=0.0,
+                bias=False,
+                batch_first=True,
+            )
+
         self.output = nn.Linear(self.embed_dim, 1)
-        self.attn = nn.MultiheadAttention(
-            embed_dim=self.embed_dim,
-            num_heads=8,
-            dropout=0.0,
-            bias=False,
-            batch_first=True,
-        )
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -53,20 +77,36 @@ class AttnPoolAddModel(nn.Module):
             dtype=protein_2_embed.dtype,
         )
 
-        output_1, _ = self.attn(
-            query=protein_1_embed,
-            key=protein_2_embed,
-            value=protein_2_embed,
-            key_padding_mask=attention_mask_2.log(),
-            need_weights=False,
-        )
-        output_2, _ = self.attn(
-            query=protein_2_embed,
-            key=protein_1_embed,
-            value=protein_1_embed,
-            key_padding_mask=attention_mask_1.log(),
-            need_weights=False,
-        )
+        if self.shared:
+            output_1, _ = self.attn(
+                query=protein_1_embed,
+                key=protein_2_embed,
+                value=protein_2_embed,
+                key_padding_mask=attention_mask_2.log(),
+                need_weights=False,
+            )
+            output_2, _ = self.attn(
+                query=protein_2_embed,
+                key=protein_1_embed,
+                value=protein_1_embed,
+                key_padding_mask=attention_mask_1.log(),
+                need_weights=False,
+            )
+        else:
+            output_1, _ = self.attn_1(
+                query=protein_1_embed,
+                key=protein_2_embed,
+                value=protein_2_embed,
+                key_padding_mask=attention_mask_2.log(),
+                need_weights=False,
+            )
+            output_2, _ = self.attn_2(
+                query=protein_2_embed,
+                key=protein_1_embed,
+                value=protein_1_embed,
+                key_padding_mask=attention_mask_1.log(),
+                need_weights=False,
+            )
 
         output_1 = output_1 + protein_1_embed
         output_2 = output_2 + protein_2_embed

@@ -1,37 +1,27 @@
-from ppi_research.layers.perceiver import Perceiver
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 
 
-class PerceiverModel(nn.Module):
-    def __init__(
-        self,
-        backbone,
-        pooler,
-        model_name,
-        embedding_name,
-        num_latents=512,
-        num_heads=8,
-        attn_dropout=0.0,
-        bias=False,
-    ):
+class SingleAttnPoolAddModel(nn.Module):
+    def __init__(self, backbone, pooler, model_name, embedding_name):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
+        self.pooler = pooler
+
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,
             model_name=model_name,
             embedding_name=embedding_name,
             trainable=True,
         )
-        self.pooler = pooler
-        self.output = nn.Linear(self.embed_dim, 1)
-        self.perceiver = Perceiver(
+        self.attn = nn.MultiheadAttention(
             embed_dim=self.embed_dim,
-            num_latents=num_latents,
-            num_heads=num_heads,
-            attn_dropout=attn_dropout,
-            bias=bias,
+            num_heads=8,
+            dropout=0.0,
+            bias=False,
+            batch_first=True,
         )
+        self.output = nn.Linear(self.embed_dim, 1)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -53,14 +43,27 @@ class PerceiverModel(nn.Module):
             attention_mask_1,
             attention_mask_2,
         )
-        output_1 = self.perceiver(
-            inputs=protein_1_embed, attention_mask=attention_mask_1
+
+        attention_mask_1 = attention_mask_1.to(
+            device=protein_1_embed.device,
+            dtype=protein_1_embed.dtype,
         )
-        output_2 = self.perceiver(
-            inputs=protein_2_embed, attention_mask=attention_mask_2
+
+        attention_mask_2 = attention_mask_2.to(
+            device=protein_2_embed.device,
+            dtype=protein_2_embed.dtype,
         )
-        output = output_1 + output_2
-        pooled_output = self.pooler(output)
+
+        output, _ = self.attn(
+            query=protein_1_embed,
+            key=protein_2_embed,
+            value=protein_2_embed,
+            key_padding_mask=attention_mask_2.log(),
+            need_weights=False,
+        )
+
+        output = output + protein_1_embed
+        pooled_output = self.pooler(output, attention_mask_1)
         logits = self.output(pooled_output)
 
         loss = None

@@ -27,7 +27,7 @@ class EmbedConcatConvBERTModel(nn.Module):
         self.convbert_layer = convbert.ConvBertLayer(convbert_config)
         self.output = nn.Sequential(
             nn.Linear(self.embed_dim * 2, self.embed_dim * 2),
-            nn.ReLU(),
+            nn.SiLU(),
             nn.Linear(self.embed_dim * 2, 1),
         )
         self.reset_parameters()

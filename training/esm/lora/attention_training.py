@@ -37,11 +37,11 @@ def main(cfg: DictConfig):
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = AutoModel.from_pretrained(ckpt)
     lora_config = LoraConfig(
-        r=cfg.esm.lora.r,
-        lora_alpha=cfg.esm.lora.alpha,
-        lora_dropout=cfg.esm.lora.dropout,
-        bias=cfg.esm.lora.bias,
-        target_modules=cfg.esm.lora.target_modules,
+        r=cfg.lora_config.r,
+        lora_alpha=cfg.lora_config.alpha,
+        lora_dropout=cfg.lora_config.dropout,
+        bias=cfg.lora_config.bias,
+        target_modules=cfg.esm.target_modules,
     )
     model = get_peft_model(model, lora_config)
 
@@ -59,9 +59,9 @@ def main(cfg: DictConfig):
     run_name = create_run_name(
         backbone=ckpt,
         setup="lora_attn_pooled_addition",
-        r=cfg.esm.lora.r,
-        alpha=cfg.esm.lora.alpha,
-        target_modules=cfg.esm.lora.target_modules,
+        r=cfg.lora_config.r,
+        alpha=cfg.lora_config.alpha,
+        target_modules=cfg.esm.target_modules,
         pooler=cfg.downstream_config.pooler,
         seed=seed,
     )

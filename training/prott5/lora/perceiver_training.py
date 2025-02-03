@@ -23,29 +23,28 @@ from transformers import T5ForConditionalGeneration
 from transformers import T5Tokenizer
 from transformers import Trainer
 from transformers import TrainingArguments
+import hydra
+from omegaconf import DictConfig
 
 seed = 7
 set_seed(seed=seed)
 
 
-def main(args):
-    ckpt = args.ckpt
-    ds_name = args.ds_name
-    max_length = args.max_length
-    pooler_name = args.pooler
+@hydra.main(config_path="config", config_name="config.yaml")
+def main(cfg: DictConfig):
+    ckpt = cfg.ckpt
+    max_length = cfg.downstream_config.max_length
+    pooler_name = cfg.downstream_config.pooler
     print("Checkpoint:", ckpt)
 
     tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5ForConditionalGeneration.from_pretrained(ckpt)
-    r = 16
-    alpha = 32
-    target_modules = ["q", "v"]
     lora_config = LoraConfig(
-        r=r,
-        lora_alpha=alpha,
-        lora_dropout=0.0,
-        bias="none",
-        target_modules=target_modules,
+        r=cfg.lora_config.r,
+        lora_alpha=cfg.lora_config.alpha,
+        lora_dropout=cfg.lora_config.dropout,
+        bias=cfg.lora_config.bias,
+        target_modules=cfg.prott5.target_modules,
     )
 
     model = get_peft_model(model, lora_config).encoder
@@ -63,11 +62,11 @@ def main(args):
     run_name = create_run_name(
         backbone=ckpt,
         setup="lora_perceiver",
-        r=r,
-        num_latents=num_latents,
-        alpha=alpha,
-        target_modules=target_modules,
-        pooler=pooler_name,
+        r=cfg.lora_config.r,
+        num_latents=cfg.perceiver_config.num_latents,
+        alpha=cfg.lora_config.alpha,
+        target_modules=cfg.prott5.target_modules,
+        pooler=cfg.downstream_config.pooler,
         seed=seed,
     )
 
@@ -100,7 +99,8 @@ def main(args):
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        ds_name, sequence_preprocessing
+        cfg.dataset_config.dataset_name,
+        sequence_preprocessing,
     )
 
     trainer = Trainer(

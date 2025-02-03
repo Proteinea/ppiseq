@@ -40,11 +40,11 @@ def main(cfg: DictConfig):
     tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5ForConditionalGeneration.from_pretrained(ckpt)
     lora_config = LoraConfig(
-        r=cfg.prott5.lora_config.r,
-        lora_alpha=cfg.prott5.lora_config.lora_alpha,
-        lora_dropout=cfg.prott5.lora_config.lora_dropout,
-        bias=cfg.prott5.lora_config.bias,
-        target_modules=cfg.prott5.lora_config.target_modules,
+        r=cfg.lora_config.r,
+        lora_alpha=cfg.lora_config.alpha,
+        lora_dropout=cfg.lora_config.dropout,
+        bias=cfg.lora_config.bias,
+        target_modules=cfg.prott5.target_modules,
     )
     model = get_peft_model(model, lora_config).encoder
 
@@ -62,9 +62,9 @@ def main(cfg: DictConfig):
     run_name = create_run_name(
         backbone=ckpt,
         setup="lora_embed_concat",
-        r=cfg.prott5.lora_config.r,
-        alpha=cfg.prott5.lora_config.lora_alpha,
-        target_modules=cfg.prott5.lora_config.target_modules,
+        r=cfg.lora_config.r,
+        alpha=cfg.lora_config.alpha,
+        target_modules=cfg.prott5.target_modules,
         pooler=cfg.downstream_config.pooler,
         seed=seed,
     )

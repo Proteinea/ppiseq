@@ -1,6 +1,16 @@
 defaults:
-  - esm_config
-  - ankh_config
+  - _self_
+  - model_configs@esm: esm
+  - model_configs@ankh: ankh
+  - model_configs@prott5: prott5
+
+
+lora_config:
+  r: 16
+  alpha: 32
+  bias: none
+  use_dora: false
+  dropout: 0.0
 
 
 downstream_config:
@@ -13,6 +23,13 @@ dataset_config:
 
 perceiver_config:
   num_latents: 512
+  num_heads: 8
+  hidden_dim: null
+  bias: false
+  num_perceiver_layers: 1
+  num_self_layers: 1
+  gated: false
+  activation: "silu"
 
 
 train_config:
