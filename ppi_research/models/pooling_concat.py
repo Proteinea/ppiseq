@@ -16,7 +16,7 @@ class EmbedConcatModel(nn.Module):
         self.pooler = pooler
         self.output = nn.Sequential(
             nn.Linear(self.embed_dim * 2, self.embed_dim * 2),
-            nn.ReLU(),
+            nn.SiLU(),
             nn.Linear(self.embed_dim * 2, 1),
         )
         self.reset_parameters()

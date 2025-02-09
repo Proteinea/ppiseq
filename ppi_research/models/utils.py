@@ -6,6 +6,12 @@ import torch
 from torch import nn
 
 
+def freezed_forward(model: nn.Module, model_inputs: Dict):
+    model.eval()
+    with torch.no_grad():
+        return model(**model_inputs)
+
+
 def extract_embeddings(
     model: nn.Module,
     model_inputs: Dict,
@@ -21,9 +27,7 @@ def extract_embeddings(
     if trainable:
         output = model(**model_inputs)
     else:
-        model.eval()
-        with torch.no_grad():
-            output = model(**model_inputs)
+        output = freezed_forward(model, model_inputs)
 
     if embedding_name is not None:
         return getattr(output, embedding_name)
@@ -38,6 +42,11 @@ def preprocess_inputs(
     return {"input_ids": sequence, "attention_mask": attention_mask}
 
 
+def freeze_parameters(model: nn.Module):
+    for p in model.parameters():
+        p.requires_grad_(False)
+
+
 class BackbonePairEmbeddingExtraction(nn.Module):
     def __init__(self, backbone, model_name, embedding_name, trainable=True):
         super().__init__()
@@ -47,8 +56,7 @@ class BackbonePairEmbeddingExtraction(nn.Module):
         self.trainable = trainable
 
         if not self.trainable:
-            for p in self.backbone.parameters():
-                p.requires_grad_(False)
+            freeze_parameters(self.backbone)
 
     def forward(
         self,
@@ -95,8 +103,7 @@ class BackboneConcatEmbeddingExtraction(nn.Module):
         self.trainable = trainable
 
         if not self.trainable:
-            for p in self.backbone.parameters():
-                p.requires_grad_(False)
+            freeze_parameters(self.backbone)
 
     def forward(self, input_ids, attention_mask=None):
         inputs = preprocess_inputs(

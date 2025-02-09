@@ -1,2 +1,12 @@
 __pycache__
 wandb
+demo.ipynb
+outputs
+*.ipynb_checkpoints
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz

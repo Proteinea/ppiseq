@@ -3,6 +3,7 @@ from torch import nn
 import torch
 from typing import Dict
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
+from transformers.models import convbert
 
 
 def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
@@ -49,8 +50,21 @@ class MultiChainModel(nn.Module):
             backbone=backbone,
             model_name=model_name,
             embedding_name=embedding_name,
-            trainable=True,
+            trainable=False,
         )
+
+        convbert_config = convbert.ConvBertConfig(
+            hidden_size=self.embed_dim,
+            num_hidden_layers=1,
+            num_attention_heads=8,
+            intermediate_size=self.embed_dim // 2,
+            conv_kernel_size=7,
+        )
+
+        # We use only one convbert layer in
+        # our benchmarking so we just use `ConvBertLayer`.
+        self.ligand_convbert_layer = convbert.ConvBertLayer(convbert_config)
+        self.receptor_convbert_layer = convbert.ConvBertLayer(convbert_config)
 
         if self.use_ffn:
             self.ffn = nn.Sequential(
@@ -193,6 +207,14 @@ class MultiChainModel(nn.Module):
             ligand_attention_mask,
             receptor_attention_mask,
         )
+
+        # Apply the convbert layer
+        ligand_embed = self.ligand_convbert_layer(
+            ligand_embed,
+        )[0]
+        receptor_embed = self.receptor_convbert_layer(
+            receptor_embed,
+        )[0]
 
         # Pool the embeddings
         ligand_pooled = self.ligand_global_pooler(

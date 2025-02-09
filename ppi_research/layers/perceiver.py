@@ -1,130 +1,10 @@
 from __future__ import annotations
 import torch
 from torch import nn
-from einops.layers.torch import Rearrange
-from einops import rearrange
 import typing
-from torch.nn import functional as F
 
-
-def softmax(x: torch.FloatTensor, dim: int):
-    # from:
-    # https://github.com/google/flaxformer/blame/ee62754ebe5a5eeb111493622de5537133822e3e/flaxformer/components/attention/dense_attention.py#L50 # noqa: E501
-    with torch.no_grad():
-        m = torch.maximum(x.amax(dim=dim, keepdim=True), torch.tensor(0.0))
-    unnormalized = torch.exp(x - m)
-    # equivalent to adding 1 to the softmax
-    denom = unnormalized.sum(dim=dim, keepdim=True) + torch.exp(-m)
-    return unnormalized / denom
-
-
-class MultiHeadAttention(nn.Module):
-    def __init__(
-        self,
-        embed_dim: int,
-        num_heads: int,
-        add_one_to_softmax: bool = False,
-        bias: bool = True,
-    ):
-        super().__init__()
-        self.embed_dim = embed_dim
-        self.num_heads = num_heads
-        self.q_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
-        self.kv_proj = nn.Linear(embed_dim, embed_dim * 2, bias=bias)
-        self.o_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
-        self.rearrange_axes = Rearrange("b n (h d) -> b h n d", h=num_heads)
-        self.scale = embed_dim ** -0.5
-        self.add_one_to_softmax = add_one_to_softmax
-
-    def scaled_dot_product_attention(
-        self,
-        q: torch.FloatTensor,
-        k: torch.FloatTensor,
-        v: torch.FloatTensor,
-        mask: torch.LongTensor | None = None,
-    ):
-        q = q * self.scale
-        attn_logits = torch.matmul(q, k.transpose(-2, -1))
-
-        if mask is not None:
-            assert mask.ndim == 2, "mask must be 2D"
-            mask = mask.to(device=attn_logits.device, dtype=attn_logits.dtype)
-            mask = mask.view(mask.shape[0], 1, 1, mask.shape[-1])
-            mask = mask.masked_fill(mask.logical_not(), float("-inf"))
-            attn_logits = attn_logits + mask
-
-        if self.add_one_to_softmax:
-            attn_scores = softmax(attn_logits, dim=-1)
-        else:
-            attn_scores = F.softmax(attn_logits, dim=-1)
-
-        attn = torch.matmul(attn_scores, v)
-        return attn
-
-    def forward(
-        self,
-        q: torch.FloatTensor,
-        kv: torch.FloatTensor,
-        mask: torch.LongTensor | None = None,
-    ):
-        xq = self.q_proj(q)
-        xk, xv = self.kv_proj(kv).chunk(2, dim=-1)
-
-        xq = self.rearrange_axes(xq)
-        xk = self.rearrange_axes(xk)
-        xv = self.rearrange_axes(xv)
-
-        attn = self.scaled_dot_product_attention(xq, xk, xv, mask)
-
-        output = rearrange(attn, "b h n d -> b n (h d)")
-        output = self.o_proj(output)
-        return output
-
-
-class FeedForward(nn.Module):
-    def __init__(
-        self,
-        embed_dim: int,
-        hidden_dim: int,
-        activation: str,
-        gated: bool = False,
-        bias: bool = True,
-    ):
-        super().__init__()
-        self.embed_dim = embed_dim
-        self.hidden_dim = hidden_dim
-        self.gated = gated
-        self.proj_1 = nn.Linear(embed_dim, hidden_dim, bias=bias)
-        self.proj_2 = nn.Linear(hidden_dim, embed_dim, bias=bias)
-        if self.gated:
-            self.gate_proj = nn.Linear(embed_dim, hidden_dim, bias=bias)
-        self.activation = getattr(F, activation)
-
-    def reset_parameters(self):
-        # Weight init
-        mean = 0
-        std = (2 / (self.hidden_dim + self.embed_dim)) ** 0.5
-        nn.init.normal_(self.proj_1.weight, mean=mean, std=std)
-        nn.init.normal_(self.proj_2.weight, mean=mean, std=std)
-        if self.gated:
-            nn.init.normal_(self.gate_proj.weight, mean=mean, std=std)
-
-        # Bias init
-        if self.bias:
-            nn.init.zeros_(self.proj_1.bias)
-            nn.init.zeros_(self.proj_2.bias)
-            if self.gated:
-                nn.init.zeros_(self.gate_proj.bias)
-
-    def forward(self, embeddings: torch.FloatTensor):
-        if self.gated:
-            gate = self.activation(self.gate_proj(embeddings))
-            output = self.proj_1(embeddings)
-            output = self.proj_2(gate * output)
-        else:
-            output = self.activation(self.proj_1(embeddings))
-            output = self.proj_2(output)
-        return output
+from ppi_research.layers.attention import MultiHeadAttention
+from ppi_research.layers.feedforward import FeedForward
 
 
 class SelfAttentionAndFeedForward(nn.Module):
@@ -263,9 +143,13 @@ class PerceiverLayer(nn.Module):
         embeddings: torch.FloatTensor,
         mask: torch.LongTensor | None = None,
     ):
-        latents = self.latent_module(latents, embeddings, mask)
+        latents = self.latent_module(
+            latents=latents,
+            embeddings=embeddings,
+            mask=mask,
+        )
         for self_layer in self.self_layers:
-            latents = self_layer(latents, mask)
+            latents = self_layer(latents=latents, mask=mask)
         return latents
 
 

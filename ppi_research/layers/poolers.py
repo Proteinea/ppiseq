@@ -12,7 +12,9 @@ def global_mean_pooling1d(
     if padding_mask is None:
         return torch.mean(x, dim=dim)
 
-    x_masked = x * padding_mask.unsqueeze(-1)
+    padding_mask = padding_mask.to(device=x.device, dtype=torch.long)
+    padding_mask = padding_mask.unsqueeze(-1)
+    x_masked = x * padding_mask
     return x_masked.sum(dim=dim) / padding_mask.sum(dim=dim)
 
 
@@ -25,6 +27,7 @@ def global_max_pooling1d(
         return torch.amax(x, dim=dim)
 
     padding_mask = padding_mask.to(device=x.device, dtype=torch.long)
+    padding_mask = padding_mask.unsqueeze(-1)
     x = x.masked_fill(padding_mask.logical_not(), -torch.inf)
     return torch.amax(x, dim=dim)
 
@@ -101,6 +104,71 @@ class GatedPooling1D(nn.Module):
         return torch.sum(x * gates.unsqueeze(-1), dim=dim)
 
 
+class ChainsPoolerV2(nn.Module):
+    def __init__(self, pooler: nn.Module):
+        super().__init__()
+        self.pooler = pooler
+
+    def forward(
+        self,
+        protein_embed: torch.FloatTensor,
+        chain_ids: torch.LongTensor,
+    ) -> torch.FloatTensor:
+        # Vectorized implementation
+        unique_chains = torch.unique(chain_ids)
+
+        # Create a mask of shape [num_unique_chains, batch_size]
+        masks = torch.stack(
+            [
+                (chain_ids == chain_id)
+                for chain_id in unique_chains
+            ],
+        )
+
+        # Expand protein_embed for broadcasting
+        expanded_embed = protein_embed.unsqueeze(0).expand(
+            len(unique_chains),
+            -1,
+            -1,
+        )
+
+        # Apply masks and pool
+        # masked_embeds = expanded_embed * masks.unsqueeze(-1)
+
+        pooled_chains = self.pooler(
+            expanded_embed,
+            masks.to(dtype=torch.long),
+            dim=1,
+        )
+        return pooled_chains
+
+
+class ChainsPooler(nn.Module):
+    def __init__(self, pooler: nn.Module):
+        super().__init__()
+        self.pooler = pooler
+
+    def forward(
+        self,
+        protein_embed: torch.FloatTensor,
+        chain_ids: torch.LongTensor,
+    ) -> torch.FloatTensor:
+        outputs = []
+        for chain_id in torch.unique(chain_ids):
+            mask = chain_ids == chain_id
+            protein_embed_masked = protein_embed[mask, ...]
+            pooled_chains = self.pooler(
+                protein_embed_masked, dim=0,
+            )
+
+            # .unsqueeze(0) to add a batch dimension.
+            outputs.append(pooled_chains.unsqueeze(0))
+        return torch.cat(outputs, dim=0)
+
+
+# Chains Poolers should not be included here, given that they are not
+# technically poolers, they are a container that aggregate
+# chains and pools them with an already existing pooler.
 available_poolers = {
     "avg": GlobalAvgPooling1D,
     "attn": AttentionPooling1D,
