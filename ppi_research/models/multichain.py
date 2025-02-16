@@ -3,6 +3,7 @@ from torch import nn
 import torch
 from typing import Dict
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
+from ppi_research.layers import poolers
 
 
 def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
@@ -20,10 +21,10 @@ class MultiChainModel(nn.Module):
     def __init__(
         self,
         backbone: nn.Module,
-        ligand_global_pooler: nn.Module,
-        receptor_global_pooler: nn.Module,
-        ligand_chains_pooler: nn.Module,
-        receptor_chains_pooler: nn.Module,
+        ligand_global_pooler: nn.Module | str,
+        receptor_global_pooler: nn.Module | str,
+        ligand_chains_pooler: nn.Module | str,
+        receptor_chains_pooler: nn.Module | str,
         model_name: str | None = None,
         embedding_name: str | None = None,
         aggregation_method: str = "concat",
@@ -40,10 +41,10 @@ class MultiChainModel(nn.Module):
             else self.embed_dim
         )
 
-        self.ligand_global_pooler = ligand_global_pooler
-        self.receptor_global_pooler = receptor_global_pooler
-        self.ligand_chains_pooler = ligand_chains_pooler
-        self.receptor_chains_pooler = receptor_chains_pooler
+        self.ligand_global_pooler = poolers.get(ligand_global_pooler)
+        self.receptor_global_pooler = poolers.get(receptor_global_pooler)
+        self.ligand_chains_pooler = poolers.get(ligand_chains_pooler)
+        self.receptor_chains_pooler = poolers.get(receptor_chains_pooler)
 
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,

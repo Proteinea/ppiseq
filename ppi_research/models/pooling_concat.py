@@ -1,13 +1,14 @@
 import torch
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
+from ppi_research.layers import poolers
 
 
 class EmbedConcatModel(nn.Module):
     def __init__(
         self,
-        backbone,
-        pooler,
+        backbone: nn.Module,
+        pooler: nn.Module | str,
         model_name: str | None = None,
         embedding_name: str | None = None,
     ):
@@ -19,7 +20,7 @@ class EmbedConcatModel(nn.Module):
             embedding_name=embedding_name,
             trainable=True,
         )
-        self.pooler = pooler
+        self.pooler = poolers.get(pooler)
         self.output = nn.Sequential(
             nn.Linear(self.embed_dim * 2, self.embed_dim * 2),
             nn.SiLU(),

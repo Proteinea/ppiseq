@@ -1,13 +1,14 @@
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 import torch
+from ppi_research.layers import poolers
 
 
 class AttnPoolAddModel(nn.Module):
     def __init__(
         self,
-        backbone,
-        pooler,
+        backbone: nn.Module,
+        pooler: nn.Module | str,
         shared: bool = True,
         model_name: str | None = None,
         embedding_name: str | None = None,
@@ -20,7 +21,7 @@ class AttnPoolAddModel(nn.Module):
             embedding_name=embedding_name,
             trainable=True,
         )
-        self.pooler = pooler
+        self.pooler = poolers.get(pooler)
         if shared:
             self.attn = nn.MultiheadAttention(
                 embed_dim=self.embed_dim,

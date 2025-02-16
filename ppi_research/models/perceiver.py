@@ -2,13 +2,14 @@ from ppi_research.layers.perceiver import Perceiver
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 import torch
+from ppi_research.layers import poolers
 
 
 class PerceiverModel(nn.Module):
     def __init__(
         self,
-        backbone,
-        pooler,
+        backbone: nn.Module,
+        pooler: nn.Module | str,
         model_name: str | None = None,
         embedding_name: str | None = None,
         num_latents: int = 512,
@@ -33,7 +34,7 @@ class PerceiverModel(nn.Module):
             embedding_name=embedding_name,
             trainable=True,
         )
-        self.pooler = pooler
+        self.pooler = poolers.get(pooler)
 
         if shared_perceiver:
             self.perceiver = Perceiver(
