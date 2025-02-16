@@ -1,7 +1,9 @@
+from __future__ import annotations
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 from transformers.models import convbert
 from ppi_research.layers import poolers
+import torch
 
 
 class AttnPoolAddConvBERTModel(nn.Module):
@@ -9,8 +11,10 @@ class AttnPoolAddConvBERTModel(nn.Module):
         self,
         backbone: nn.Module,
         pooler: nn.Module | str,
-        model_name: str,
-        embedding_name: str,
+        shared_convbert: bool = True,
+        shared_attn: bool = True,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
@@ -30,16 +34,39 @@ class AttnPoolAddConvBERTModel(nn.Module):
             conv_kernel_size=7,
         )
 
-        # We use only one convbert layer in
-        # our benchmarking so we just use `ConvBertLayer`.
-        self.convbert_layer = convbert.ConvBertLayer(convbert_config)
-        self.attn = nn.MultiheadAttention(
-            embed_dim=self.embed_dim,
-            num_heads=8,
-            dropout=0.0,
-            bias=False,
-            batch_first=True,
-        )
+        if shared_convbert:
+            self.convbert_layer = convbert.ConvBertLayer(convbert_config)
+        else:
+            self.ligand_convbert_layer = convbert.ConvBertLayer(
+                convbert_config
+            )
+            self.receptor_convbert_layer = convbert.ConvBertLayer(
+                convbert_config
+            )
+
+        if shared_attn:
+            self.attn = nn.MultiheadAttention(
+                embed_dim=self.embed_dim,
+                num_heads=8,
+                dropout=0.0,
+                bias=False,
+                batch_first=True,
+            )
+        else:
+            self.ligand_attn = nn.MultiheadAttention(
+                embed_dim=self.embed_dim,
+                num_heads=8,
+                dropout=0.0,
+                bias=False,
+                batch_first=True,
+            )
+            self.receptor_attn = nn.MultiheadAttention(
+                embed_dim=self.embed_dim,
+                num_heads=8,
+                dropout=0.0,
+                bias=False,
+                batch_first=True,
+            )
         self.regressor = nn.Linear(self.embed_dim, 1)
         self.reset_parameters()
 
@@ -50,11 +77,11 @@ class AttnPoolAddConvBERTModel(nn.Module):
 
     def forward(
         self,
-        ligand_input_ids,
-        receptor_input_ids,
-        ligand_attention_mask,
-        receptor_attention_mask,
-        labels=None,
+        ligand_input_ids: torch.LongTensor,
+        receptor_input_ids: torch.LongTensor,
+        ligand_attention_mask: torch.LongTensor | None = None,
+        receptor_attention_mask: torch.LongTensor | None = None,
+        labels: torch.FloatTensor | None = None,
     ):
         ligand_embed, receptor_embed = self.backbone(
             ligand_input_ids,
@@ -73,28 +100,50 @@ class AttnPoolAddConvBERTModel(nn.Module):
             dtype=receptor_embed.dtype,
         )
 
-        ligand_embed = self.convbert_layer(ligand_embed)[0]
-        receptor_embed = self.convbert_layer(receptor_embed)[0]
+        if self.shared_convbert:
+            ligand_embed = self.convbert_layer(ligand_embed)[0]
+            receptor_embed = self.convbert_layer(receptor_embed)[0]
+        else:
+            ligand_embed = self.ligand_convbert_layer(ligand_embed)[0]
+            receptor_embed = self.receptor_convbert_layer(receptor_embed)[0]
 
-        output_1, _ = self.attn(
-            query=ligand_embed,
-            key=receptor_embed,
-            value=receptor_embed,
-            key_padding_mask=receptor_attention_mask.log(),
-            need_weights=False,
-        )
-        output_2, _ = self.attn(
-            query=receptor_embed,
-            key=ligand_embed,
-            value=ligand_embed,
-            key_padding_mask=ligand_attention_mask.log(),
-            need_weights=False,
-        )
+        if self.shared_attn:
+            output_1, _ = self.attn(
+                query=ligand_embed,
+                key=receptor_embed,
+                value=receptor_embed,
+                key_padding_mask=receptor_attention_mask.log(),
+                need_weights=False,
+            )
+            output_2, _ = self.attn(
+                query=ligand_embed,
+                key=receptor_embed,
+                value=receptor_embed,
+                key_padding_mask=receptor_attention_mask.log(),
+                need_weights=False,
+            )
+        else:
+            output_1, _ = self.ligand_attn(
+                query=ligand_embed,
+                key=receptor_embed,
+                value=receptor_embed,
+                key_padding_mask=receptor_attention_mask.log(),
+                need_weights=False,
+            )
+            output_2, _ = self.receptor_attn(
+                query=receptor_embed,
+                key=ligand_embed,
+                value=ligand_embed,
+                key_padding_mask=ligand_attention_mask.log(),
+                need_weights=False,
+            )
 
-        output_1 = output_1 + ligand_embed
-        output_2 = output_2 + receptor_embed
-        pooled_output_1 = self.pooler(output_1, ligand_attention_mask)
-        pooled_output_2 = self.pooler(output_2, receptor_attention_mask)
+        ligand_embed = ligand_embed + output_1
+        receptor_embed = receptor_embed + output_2
+
+        pooled_output_1 = self.pooler(ligand_embed, ligand_attention_mask)
+        pooled_output_2 = self.pooler(receptor_embed, receptor_attention_mask)
+
         pooled_output = pooled_output_1 + pooled_output_2
         logits = self.regressor(pooled_output)
 

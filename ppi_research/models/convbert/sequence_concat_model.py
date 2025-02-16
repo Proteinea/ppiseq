@@ -1,7 +1,9 @@
+from __future__ import annotations
 from ppi_research.layers import poolers
 from ppi_research.models.utils import BackboneConcatEmbeddingExtraction
 from torch import nn
 from transformers.models import convbert
+import torch
 
 
 class SequenceConcatConvBERTModel(nn.Module):
@@ -9,8 +11,8 @@ class SequenceConcatConvBERTModel(nn.Module):
         self,
         backbone: nn.Module,
         pooler: nn.Module | str,
-        model_name: str,
-        embedding_name: str,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
@@ -42,7 +44,12 @@ class SequenceConcatConvBERTModel(nn.Module):
         self.output.bias.data.zero_()
         self.output.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self, input_ids, attention_mask=None, labels=None):
+    def forward(
+        self,
+        input_ids: torch.LongTensor,
+        attention_mask: torch.LongTensor | None = None,
+        labels: torch.FloatTensor | None = None,
+    ):
         embed = self.backbone(input_ids, attention_mask)
         embed = self.convbert_layer(embed)[0]
 

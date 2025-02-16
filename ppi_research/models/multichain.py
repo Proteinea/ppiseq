@@ -24,8 +24,8 @@ class MultiChainModel(nn.Module):
         receptor_global_pooler: nn.Module,
         ligand_chains_pooler: nn.Module,
         receptor_chains_pooler: nn.Module,
-        model_name: str,
-        embedding_name: str,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
         aggregation_method: str = "concat",
         use_ffn: bool = False,
         bias: bool = False,
@@ -129,7 +129,8 @@ class MultiChainModel(nn.Module):
             mask = chain_ids == chain_id
             protein_embed_masked = protein_embed[mask, ...]
             pooled_chains = pooler(
-                protein_embed_masked, dim=0,
+                protein_embed_masked,
+                dim=0,
             )
 
             # .unsqueeze(0) to add a batch dimension.
@@ -196,11 +197,15 @@ class MultiChainModel(nn.Module):
 
         # Pool the embeddings
         ligand_pooled = self.ligand_global_pooler(
-            ligand_embed, ligand_attention_mask, dim=1,
+            ligand_embed,
+            ligand_attention_mask,
+            dim=1,
         )
 
         receptor_pooled = self.receptor_global_pooler(
-            receptor_embed, receptor_attention_mask, dim=1,
+            receptor_embed,
+            receptor_attention_mask,
+            dim=1,
         )
 
         # Process the chains
@@ -210,12 +215,6 @@ class MultiChainModel(nn.Module):
                 chain_ids=ligand_chain_ids,
                 pooler=self.ligand_chains_pooler,
             )
-
-            # ligand_pooled_chains = self.process_chains(
-            #     protein_embed=ligand_pooled,
-            #     chain_ids=ligand_chain_ids,
-            #     pooler=self.ligand_chains_pooler,
-            # )
         else:
             ligand_pooled_chains = ligand_pooled
 
@@ -226,11 +225,6 @@ class MultiChainModel(nn.Module):
                 pooler=self.receptor_chains_pooler,
             )
 
-            # receptor_pooled_chains = self.process_chains(
-            #     protein_embed=receptor_pooled,
-            #     chain_ids=receptor_chain_ids,
-            #     pooler=self.receptor_chains_pooler,
-            # )
         else:
             receptor_pooled_chains = receptor_pooled
 

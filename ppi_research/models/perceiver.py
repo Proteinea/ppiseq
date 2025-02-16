@@ -1,6 +1,7 @@
 from ppi_research.layers.perceiver import Perceiver
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
+import torch
 
 
 class PerceiverModel(nn.Module):
@@ -8,17 +9,17 @@ class PerceiverModel(nn.Module):
         self,
         backbone,
         pooler,
-        model_name,
-        embedding_name,
-        num_latents=512,
-        num_heads=8,
-        hidden_dim=None,
-        bias=False,
-        num_perceiver_layers=1,
-        num_self_layers=1,
-        activation="silu",
-        gated=False,
-        shared_perceiver=True,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
+        num_latents: int = 512,
+        num_heads: int = 8,
+        hidden_dim: int | None = None,
+        bias: bool = False,
+        num_perceiver_layers: int = 1,
+        num_self_layers: int = 1,
+        activation: str = "silu",
+        gated: bool = False,
+        shared_perceiver: bool = True,
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
@@ -47,7 +48,7 @@ class PerceiverModel(nn.Module):
                 gated=gated,
             )
         else:
-            self.perceiver_1 = Perceiver(
+            self.ligand_perceiver = Perceiver(
                 embed_dim=self.embed_dim,
                 num_heads=num_heads,
                 num_latents=num_latents,
@@ -58,7 +59,7 @@ class PerceiverModel(nn.Module):
                 bias=bias,
                 gated=gated,
             )
-            self.perceiver_2 = Perceiver(
+            self.receptor_perceiver = Perceiver(
                 embed_dim=self.embed_dim,
                 num_heads=num_heads,
                 num_latents=num_latents,
@@ -80,31 +81,31 @@ class PerceiverModel(nn.Module):
 
     def forward(
         self,
-        protein_1,
-        protein_2,
-        attention_mask_1=None,
-        attention_mask_2=None,
-        labels=None,
+        ligand_input_ids: torch.LongTensor,
+        receptor_input_ids: torch.LongTensor,
+        ligand_attention_mask: torch.LongTensor | None = None,
+        receptor_attention_mask: torch.LongTensor | None = None,
+        labels: torch.FloatTensor | None = None,
     ):
-        protein_1_embed, protein_2_embed = self.backbone(
-            protein_1,
-            protein_2,
-            attention_mask_1,
-            attention_mask_2,
+        ligand_embed, receptor_embed = self.backbone(
+            ligand_input_ids,
+            receptor_input_ids,
+            ligand_attention_mask,
+            receptor_attention_mask,
         )
         if self.shared_perceiver:
             output_1 = self.perceiver(
-                inputs=protein_1_embed, attention_mask=attention_mask_1
+                inputs=ligand_embed, attention_mask=ligand_attention_mask
             )
             output_2 = self.perceiver(
-                inputs=protein_2_embed, attention_mask=attention_mask_2
+                inputs=receptor_embed, attention_mask=receptor_attention_mask
             )
         else:
-            output_1 = self.perceiver_1(
-                inputs=protein_1_embed, attention_mask=attention_mask_1
+            output_1 = self.ligand_perceiver(
+                inputs=ligand_embed, attention_mask=ligand_attention_mask
             )
-            output_2 = self.perceiver_2(
-                inputs=protein_2_embed, attention_mask=attention_mask_2
+            output_2 = self.receptor_perceiver(
+                inputs=receptor_embed, attention_mask=receptor_attention_mask
             )
         output = output_1 + output_2
         pooled_output = self.pooler(output)

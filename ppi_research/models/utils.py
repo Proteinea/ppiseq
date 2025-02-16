@@ -7,7 +7,9 @@ from torch import nn
 
 
 def freezed_forward(model: nn.Module, model_inputs: Dict):
-    model.eval()
+    if model.training:
+        model.eval()
+
     with torch.no_grad():
         return model(**model_inputs)
 
@@ -48,7 +50,13 @@ def freeze_parameters(model: nn.Module):
 
 
 class BackbonePairEmbeddingExtraction(nn.Module):
-    def __init__(self, backbone, model_name, embedding_name, trainable=True):
+    def __init__(
+        self,
+        backbone,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
+        trainable: bool = True,
+    ):
         super().__init__()
         self.backbone = backbone
         self.model_name = model_name
@@ -60,42 +68,48 @@ class BackbonePairEmbeddingExtraction(nn.Module):
 
     def forward(
         self,
-        protein_1,
-        protein_2,
-        attention_mask_1=None,
-        attention_mask_2=None,
+        ligand_input_ids: torch.LongTensor,
+        receptor_input_ids: torch.LongTensor,
+        ligand_attention_mask: torch.LongTensor | None = None,
+        receptor_attention_mask: torch.LongTensor | None = None,
     ):
-        inputs_1 = preprocess_inputs(
-            protein_1,
-            attention_mask_1,
+        ligand_inputs = preprocess_inputs(
+            ligand_input_ids,
+            ligand_attention_mask,
             model_name=self.model_name,
         )
 
-        inputs_2 = preprocess_inputs(
-            protein_2,
-            attention_mask_2,
+        receptor_inputs = preprocess_inputs(
+            receptor_input_ids,
+            receptor_attention_mask,
             model_name=self.model_name,
         )
 
-        protein_1_embed = extract_embeddings(
+        ligand_embed = extract_embeddings(
             model=self.backbone,
-            model_inputs=inputs_1,
+            model_inputs=ligand_inputs,
             trainable=self.trainable,
             embedding_name=self.embedding_name,
         )
 
-        protein_2_embed = extract_embeddings(
+        receptor_embed = extract_embeddings(
             model=self.backbone,
-            model_inputs=inputs_2,
+            model_inputs=receptor_inputs,
             trainable=self.trainable,
             embedding_name=self.embedding_name,
         )
 
-        return protein_1_embed, protein_2_embed
+        return ligand_embed, receptor_embed
 
 
 class BackboneConcatEmbeddingExtraction(nn.Module):
-    def __init__(self, backbone, model_name, embedding_name, trainable=True):
+    def __init__(
+        self,
+        backbone,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
+        trainable: bool = True,
+    ):
         super().__init__()
         self.backbone = backbone
         self.model_name = model_name
@@ -105,7 +119,11 @@ class BackboneConcatEmbeddingExtraction(nn.Module):
         if not self.trainable:
             freeze_parameters(self.backbone)
 
-    def forward(self, input_ids, attention_mask=None):
+    def forward(
+        self,
+        input_ids: torch.LongTensor,
+        attention_mask: torch.LongTensor | None = None,
+    ):
         inputs = preprocess_inputs(
             input_ids,
             attention_mask,

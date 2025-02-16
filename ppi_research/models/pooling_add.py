@@ -1,9 +1,16 @@
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
+import torch
 
 
 class PoolingAdditionModel(nn.Module):
-    def __init__(self, backbone, pooler, model_name, embedding_name):
+    def __init__(
+        self,
+        backbone,
+        pooler,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
+    ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.backbone = BackbonePairEmbeddingExtraction(
@@ -23,31 +30,22 @@ class PoolingAdditionModel(nn.Module):
 
     def forward(
         self,
-        protein_1,
-        protein_2,
-        attention_mask_1=None,
-        attention_mask_2=None,
-        labels=None,
+        ligand_input_ids: torch.LongTensor,
+        receptor_input_ids: torch.LongTensor,
+        ligand_attention_mask: torch.LongTensor | None = None,
+        receptor_attention_mask: torch.LongTensor | None = None,
+        labels: torch.FloatTensor | None = None,
     ):
-        protein_1_embed, protein_2_embed = self.backbone(
-            protein_1,
-            protein_2,
-            attention_mask_1,
-            attention_mask_2,
+        ligand_embed, receptor_embed = self.backbone(
+            ligand_input_ids,
+            receptor_input_ids,
+            ligand_attention_mask,
+            receptor_attention_mask,
         )
 
-        attention_mask_1 = attention_mask_1.to(
-            device=protein_1_embed.device,
-            dtype=protein_1_embed.dtype,
-        )
-        attention_mask_2 = attention_mask_2.to(
-            device=protein_2_embed.device,
-            dtype=protein_2_embed.dtype,
-        )
-
-        pooled_output_1 = self.pooler(protein_1_embed, attention_mask_1)
-        pooled_output_2 = self.pooler(protein_2_embed, attention_mask_2)
-        pooled_output = pooled_output_1 + pooled_output_2
+        pooled_ligand = self.pooler(ligand_embed, ligand_attention_mask)
+        pooled_receptor = self.pooler(receptor_embed, receptor_attention_mask)
+        pooled_output = pooled_ligand + pooled_receptor
         logits = self.output(pooled_output)
 
         loss = None

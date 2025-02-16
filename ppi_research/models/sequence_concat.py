@@ -1,9 +1,16 @@
 from ppi_research.models.utils import BackboneConcatEmbeddingExtraction
 from torch import nn
+import torch
 
 
 class SequenceConcatModel(nn.Module):
-    def __init__(self, backbone, pooler, model_name, embedding_name):
+    def __init__(
+        self,
+        backbone,
+        pooler,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
+    ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.backbone = BackboneConcatEmbeddingExtraction(
@@ -21,13 +28,13 @@ class SequenceConcatModel(nn.Module):
         self.output.bias.data.zero_()
         self.output.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self, input_ids, attention_mask=None, labels=None):
+    def forward(
+        self,
+        input_ids: torch.LongTensor,
+        attention_mask: torch.LongTensor | None = None,
+        labels: torch.FloatTensor | None = None,
+    ):
         embed = self.backbone(input_ids, attention_mask)
-
-        attention_mask = attention_mask.to(
-            device=embed.device,
-            dtype=embed.dtype,
-        )
         pooled_output = self.pooler(embed, attention_mask)
         logits = self.output(pooled_output)
 

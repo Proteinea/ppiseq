@@ -26,8 +26,9 @@ class MultiChainModel(nn.Module):
         receptor_global_pooler: nn.Module | str,
         ligand_chains_pooler: nn.Module | str,
         receptor_chains_pooler: nn.Module | str,
-        model_name: str,
-        embedding_name: str,
+        shared_convbert: bool = True,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
         aggregation_method: str = "concat",
         use_ffn: bool = False,
         bias: bool = False,
@@ -62,10 +63,15 @@ class MultiChainModel(nn.Module):
             conv_kernel_size=7,
         )
 
-        # We use only one convbert layer in
-        # our benchmarking so we just use `ConvBertLayer`.
-        self.ligand_convbert_layer = convbert.ConvBertLayer(convbert_config)
-        self.receptor_convbert_layer = convbert.ConvBertLayer(convbert_config)
+        if shared_convbert:
+            self.convbert_layer = convbert.ConvBertLayer(convbert_config)
+        else:
+            self.ligand_convbert_layer = convbert.ConvBertLayer(
+                convbert_config
+            )
+            self.receptor_convbert_layer = convbert.ConvBertLayer(
+                convbert_config
+            )
 
         if self.use_ffn:
             self.ffn = nn.Sequential(
@@ -211,12 +217,12 @@ class MultiChainModel(nn.Module):
         )
 
         # Apply the convbert layer
-        ligand_embed = self.ligand_convbert_layer(
-            ligand_embed,
-        )[0]
-        receptor_embed = self.receptor_convbert_layer(
-            receptor_embed,
-        )[0]
+        if self.shared_convbert:
+            ligand_embed = self.convbert_layer(ligand_embed)[0]
+            receptor_embed = self.convbert_layer(receptor_embed)[0]
+        else:
+            ligand_embed = self.ligand_convbert_layer(ligand_embed)[0]
+            receptor_embed = self.receptor_convbert_layer(receptor_embed)[0]
 
         # Pool the embeddings
         ligand_pooled = self.ligand_global_pooler(
@@ -238,12 +244,6 @@ class MultiChainModel(nn.Module):
                 chain_ids=ligand_chain_ids,
                 pooler=self.ligand_chains_pooler,
             )
-
-            # ligand_pooled_chains = self.process_chains(
-            #     protein_embed=ligand_pooled,
-            #     chain_ids=ligand_chain_ids,
-            #     pooler=self.ligand_chains_pooler,
-            # )
         else:
             ligand_pooled_chains = ligand_pooled
 
@@ -253,12 +253,6 @@ class MultiChainModel(nn.Module):
                 chain_ids=receptor_chain_ids,
                 pooler=self.receptor_chains_pooler,
             )
-
-            # receptor_pooled_chains = self.process_chains(
-            #     protein_embed=receptor_pooled,
-            #     chain_ids=receptor_chain_ids,
-            #     pooler=self.receptor_chains_pooler,
-            # )
         else:
             receptor_pooled_chains = receptor_pooled
 
