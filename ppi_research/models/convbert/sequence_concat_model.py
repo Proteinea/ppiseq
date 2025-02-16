@@ -22,7 +22,7 @@ class SequenceConcatConvBERTModel(nn.Module):
             embedding_name=embedding_name,
             trainable=False,
         )
-        self.pooler = poolers.get(pooler)
+        self.pooler = poolers.get(pooler, self.embed_dim)
 
         convbert_config = convbert.ConvBertConfig(
             hidden_size=self.embed_dim,

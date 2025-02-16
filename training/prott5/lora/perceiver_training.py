@@ -1,7 +1,5 @@
 import os
 
-from ppi_research.layers import poolers
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -13,7 +11,6 @@ from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import PerceiverModel
-from ppi_research.preprocessing.prott5 import sequence_preprocessing
 from ppi_research.utils import create_run_name
 from ppi_research.utils import parse_common_args
 from ppi_research.utils import prott5_checkpoint_mapping
@@ -25,6 +22,7 @@ from transformers import Trainer
 from transformers import TrainingArguments
 import hydra
 from omegaconf import DictConfig
+from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 seed = 7
 set_seed(seed=seed)
@@ -33,8 +31,7 @@ set_seed(seed=seed)
 @hydra.main(config_path="config", config_name="config.yaml")
 def main(cfg: DictConfig):
     ckpt = cfg.ckpt
-    max_length = cfg.downstream_config.max_length
-    pooler_name = cfg.downstream_config.pooler
+    max_length = cfg.prott5.max_length
     print("Checkpoint:", ckpt)
 
     tokenizer = T5Tokenizer.from_pretrained(ckpt)
@@ -49,14 +46,19 @@ def main(cfg: DictConfig):
 
     model = get_peft_model(model, lora_config).encoder
 
-    num_latents = 512
-    pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
     downstream_model = PerceiverModel(
         backbone=model,
-        pooler=pooler,
+        pooler=cfg.pooler,
         model_name="prott5",
         embedding_name="last_hidden_state",
-        num_latents=num_latents,
+        num_latents=cfg.perceiver_config.num_latents,
+        num_heads=cfg.perceiver_config.num_heads,
+        hidden_dim=cfg.perceiver_config.hidden_dim,
+        num_perceiver_layers=cfg.perceiver_config.num_perceiver_layers,
+        num_self_layers=cfg.perceiver_config.num_self_layers,
+        activation=cfg.perceiver_config.activation,
+        gated=cfg.perceiver_config.gated,
+        shared_perceiver=cfg.perceiver_config.shared_perceiver,
     )
 
     run_name = create_run_name(
@@ -66,7 +68,7 @@ def main(cfg: DictConfig):
         num_latents=cfg.perceiver_config.num_latents,
         alpha=cfg.lora_config.alpha,
         target_modules=cfg.prott5.target_modules,
-        pooler=cfg.downstream_config.pooler,
+        pooler=cfg.pooler,
         seed=seed,
     )
 
@@ -98,18 +100,16 @@ def main(cfg: DictConfig):
         save_safetensors=False,
     )
 
-    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        cfg.dataset_config.dataset_name,
-        sequence_preprocessing,
-    )
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(cfg.dataset_name)
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.PairCollator(
             tokenizer=tokenizer,
-            is_split_into_words=True,
+            model_name="prott5",
             max_length=max_length,
+            labels_preprocessing_function=log_transform_labels,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,

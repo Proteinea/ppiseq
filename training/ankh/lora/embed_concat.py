@@ -1,7 +1,5 @@
 import os
 
-from ppi_research.layers import poolers
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -20,7 +18,7 @@ from transformers import AutoTokenizer
 from transformers import T5ForConditionalGeneration
 from transformers import Trainer
 from transformers import TrainingArguments
-
+from ppi_research.data_adapters.preprocessing import log_transform_labels
 import hydra
 from omegaconf import DictConfig
 
@@ -30,7 +28,7 @@ from omegaconf import DictConfig
 )
 def main(cfg: DictConfig):
     ckpt = cfg.ankh.ckpt
-    max_length = cfg.train_config.max_length
+    max_length = cfg.ankh.max_length
     seed = cfg.train_config.seed
     set_seed(seed=seed)
     print("Checkpoint:", ckpt)
@@ -47,13 +45,10 @@ def main(cfg: DictConfig):
     )
     model = get_peft_model(model, lora_config).encoder
 
-    pooler = poolers.get(
-        cfg.downstream_config.pooler,
-        embed_dim=model.config.hidden_size,
-    )
     downstream_model = EmbedConcatModel(
         backbone=model,
-        pooler=pooler,
+        pooler=cfg.pooler,
+        concat_first=cfg.embed_concat_config.concat_first,
         model_name="ankh",
         embedding_name="last_hidden_state",
     )
@@ -64,8 +59,9 @@ def main(cfg: DictConfig):
         r=cfg.lora_config.r,
         alpha=cfg.lora_config.alpha,
         target_modules=cfg.ankh.target_modules,
-        pooler=cfg.downstream_config.pooler,
+        pooler=cfg.pooler,
         seed=seed,
+        concat_first=cfg.embed_concat_config.concat_first,
     )
 
     training_args = TrainingArguments(
@@ -97,14 +93,17 @@ def main(cfg: DictConfig):
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        cfg.dataset_config.dataset_name,
+        cfg.dataset_name,
     )
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.PairCollator(
-            tokenizer=tokenizer, max_length=max_length, random_swapping=True
+            tokenizer=tokenizer,
+            model_name="ankh",
+            max_length=max_length,
+            labels_preprocessing_function=log_transform_labels,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,

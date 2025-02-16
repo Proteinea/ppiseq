@@ -22,6 +22,7 @@ from transformers import Trainer
 from transformers import TrainingArguments
 import hydra
 from omegaconf import DictConfig
+from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 
 @hydra.main(
@@ -30,9 +31,9 @@ from omegaconf import DictConfig
     version_base=None,
 )
 def main(cfg: DictConfig):
-    ckpt = cfg.ckpt
-    max_length = cfg.downstream_config.max_length
-    seed = cfg.seed
+    ckpt = cfg.esm.ckpt
+    max_length = cfg.esm.max_length
+    seed = cfg.train_config.seed
     set_seed(seed=seed)
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
@@ -96,14 +97,17 @@ def main(cfg: DictConfig):
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        cfg.dataset_config.dataset_name,
+        cfg.dataset_name,
     )
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.SequenceConcatCollator(
-            tokenizer=tokenizer, random_swapping=False, max_length=max_length
+            tokenizer=tokenizer,
+            model_name="esm",
+            max_length=max_length,
+            labels_preprocessing_function=log_transform_labels,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,

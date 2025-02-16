@@ -5,6 +5,8 @@ defaults:
   - model_configs@prott5: prott5
 
 
+dataset_name: "ppb_affinity"
+
 lora_config:
   r: 16
   alpha: 32
@@ -13,12 +15,15 @@ lora_config:
   dropout: 0.0
 
 
-downstream_config:
-  pooler: avg
+pooler: avg
 
 
-dataset_config:
-  dataset_name: "ppi"
+attn_pool_add_config:
+  shared_attn: true
+  shared_convbert: true
+
+embed_concat_config:
+  concat_first: true
 
 
 perceiver_config:
@@ -30,7 +35,7 @@ perceiver_config:
   num_self_layers: 1
   gated: false
   activation: "silu"
-
+  shared_perceiver: true
 
 train_config:
   num_train_epochs: 30

@@ -5,7 +5,7 @@ from torch import nn
 from transformers.models import convbert
 
 
-class PoolConcatConvBERTModel(nn.Module):
+class EmbedConcatConvBERTModel(nn.Module):
     def __init__(
         self,
         backbone: nn.Module,
@@ -23,7 +23,7 @@ class PoolConcatConvBERTModel(nn.Module):
             embedding_name=embedding_name,
             trainable=False,
         )
-        self.pooler = poolers.get(pooler)
+        self.pooler = poolers.get(pooler, self.embed_dim)
         convbert_config = convbert.ConvBertConfig(
             hidden_size=self.embed_dim,
             num_hidden_layers=1,
@@ -34,10 +34,14 @@ class PoolConcatConvBERTModel(nn.Module):
         # We use only one convbert layer in
         # our benchmarking so we just use `ConvBertLayer`.
         self.convbert_layer = convbert.ConvBertLayer(convbert_config)
+        hidden_dim = (
+            self.embed_dim * 2 if self.concat_first else self.embed_dim
+        )
+
         self.output = nn.Sequential(
-            nn.Linear(self.embed_dim * 2, self.embed_dim * 2),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.SiLU(),
-            nn.Linear(self.embed_dim * 2, 1),
+            nn.Linear(hidden_dim, 1),
         )
         self.reset_parameters()
 

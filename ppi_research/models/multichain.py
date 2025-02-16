@@ -41,10 +41,18 @@ class MultiChainModel(nn.Module):
             else self.embed_dim
         )
 
-        self.ligand_global_pooler = poolers.get(ligand_global_pooler)
-        self.receptor_global_pooler = poolers.get(receptor_global_pooler)
-        self.ligand_chains_pooler = poolers.get(ligand_chains_pooler)
-        self.receptor_chains_pooler = poolers.get(receptor_chains_pooler)
+        self.ligand_global_pooler = poolers.get(
+            ligand_global_pooler, self.embed_dim
+        )
+        self.receptor_global_pooler = poolers.get(
+            receptor_global_pooler, self.embed_dim
+        )
+        self.ligand_chains_pooler = poolers.get(
+            ligand_chains_pooler, self.embed_dim
+        )
+        self.receptor_chains_pooler = poolers.get(
+            receptor_chains_pooler, self.embed_dim
+        )
 
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,

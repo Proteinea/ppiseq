@@ -1,7 +1,5 @@
 import os
 
-from ppi_research.layers import poolers
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -22,6 +20,7 @@ from transformers import Trainer
 from transformers import TrainingArguments
 import hydra
 from omegaconf import DictConfig
+from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 
 @hydra.main(
@@ -31,20 +30,16 @@ from omegaconf import DictConfig
 )
 def main(cfg: DictConfig):
     ckpt = cfg.esm.ckpt
-    max_length = cfg.dataset_config.max_length
+    max_length = cfg.esm.max_length
     seed = cfg.train_config.seed
     set_seed(seed=seed)
     print("Checkpoint:", ckpt)
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = AutoModel.from_pretrained(ckpt)
 
-    pooler = poolers.get(
-        cfg.downstream_config.pooler,
-        embed_dim=model.config.hidden_size,
-    )
     downstream_model = SequenceConcatConvBERTModel(
         backbone=model,
-        pooler=pooler,
+        pooler=cfg.pooler,
         model_name="esm2",
         embedding_name="last_hidden_state",
     )
@@ -52,7 +47,7 @@ def main(cfg: DictConfig):
     run_name = create_run_name(
         backbone=ckpt,
         setup="convbert_sequence_concat",
-        pooler=cfg.downstream_config.pooler,
+        pooler=cfg.pooler,
         seed=seed,
     )
 
@@ -84,15 +79,16 @@ def main(cfg: DictConfig):
         save_safetensors=cfg.train_config.save_safetensors,
     )
 
-    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        cfg.dataset_config.dataset_name,
-    )
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(cfg.dataset_name)
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.SequenceConcatCollator(
-            tokenizer=tokenizer, random_swapping=False, max_length=max_length
+            tokenizer=tokenizer,
+            model_name="esm",
+            max_length=max_length,
+            labels_preprocessing_function=log_transform_labels,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,

@@ -1,7 +1,5 @@
 import os
 
-from ppi_research.layers import poolers
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -21,6 +19,7 @@ from transformers import Trainer
 from transformers import TrainingArguments
 import hydra
 from omegaconf import DictConfig
+from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 
 @hydra.main(
@@ -30,7 +29,7 @@ from omegaconf import DictConfig
 )
 def main(cfg: DictConfig):
     ckpt = cfg.ankh.ckpt
-    max_length = cfg.max_length
+    max_length = cfg.ankh.max_length
     seed = cfg.train_config.seed
     print("Checkpoint:", ckpt)
     set_seed(seed=seed)
@@ -47,16 +46,20 @@ def main(cfg: DictConfig):
     )
 
     model = get_peft_model(model, lora_config).encoder
-    pooler = poolers.get(
-        cfg.downstream_config.pooler,
-        embed_dim=model.config.hidden_size,
-    )
     downstream_model = PerceiverModel(
         backbone=model,
-        pooler=pooler,
+        pooler=cfg.pooler,
         model_name="ankh",
         embedding_name="last_hidden_state",
         num_latents=cfg.perceiver_config.num_latents,
+        num_heads=cfg.perceiver_config.num_heads,
+        hidden_dim=cfg.perceiver_config.hidden_dim,
+        bias=cfg.perceiver_config.bias,
+        num_perceiver_layers=cfg.perceiver_config.num_perceiver_layers,
+        num_self_layers=cfg.perceiver_config.num_self_layers,
+        activation=cfg.perceiver_config.activation,
+        gated=cfg.perceiver_config.gated,
+        shared_perceiver=cfg.perceiver_config.shared_perceiver,
     )
 
     run_name = create_run_name(
@@ -66,8 +69,9 @@ def main(cfg: DictConfig):
         num_latents=cfg.perceiver_config.num_latents,
         alpha=cfg.lora_config.alpha,
         target_modules=cfg.ankh.target_modules,
-        pooler=cfg.downstream_config.pooler,
+        pooler=cfg.pooler,
         seed=seed,
+        shared_perceiver=cfg.perceiver_config.shared_perceiver,
     )
 
     training_args = TrainingArguments(
@@ -99,14 +103,17 @@ def main(cfg: DictConfig):
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        cfg.dataset_config.dataset_name,
+        cfg.dataset_name,
     )
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.PairCollator(
-            tokenizer=tokenizer, max_length=max_length
+            tokenizer=tokenizer,
+            model_name="ankh",
+            max_length=max_length,
+            labels_preprocessing_function=log_transform_labels,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,

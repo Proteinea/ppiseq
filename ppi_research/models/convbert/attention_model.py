@@ -12,19 +12,22 @@ class AttnPoolAddConvBERTModel(nn.Module):
         backbone: nn.Module,
         pooler: nn.Module | str,
         shared_convbert: bool = True,
-        shared_attn: bool = True,
+        shared_attention: bool = True,
         model_name: str | None = None,
         embedding_name: str | None = None,
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
+        self.shared_convbert = shared_convbert
+        self.shared_attention = shared_attention
+
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,
             model_name=model_name,
             embedding_name=embedding_name,
             trainable=False,
         )
-        self.pooler = poolers.get(pooler)
+        self.pooler = poolers.get(pooler, self.embed_dim)
 
         convbert_config = convbert.ConvBertConfig(
             hidden_size=self.embed_dim,
@@ -44,7 +47,7 @@ class AttnPoolAddConvBERTModel(nn.Module):
                 convbert_config
             )
 
-        if shared_attn:
+        if shared_attention:
             self.attn = nn.MultiheadAttention(
                 embed_dim=self.embed_dim,
                 num_heads=8,
@@ -107,7 +110,7 @@ class AttnPoolAddConvBERTModel(nn.Module):
             ligand_embed = self.ligand_convbert_layer(ligand_embed)[0]
             receptor_embed = self.receptor_convbert_layer(receptor_embed)[0]
 
-        if self.shared_attn:
+        if self.shared_attention:
             output_1, _ = self.attn(
                 query=ligand_embed,
                 key=receptor_embed,

@@ -34,7 +34,7 @@ class PerceiverModel(nn.Module):
             embedding_name=embedding_name,
             trainable=True,
         )
-        self.pooler = poolers.get(pooler)
+        self.pooler = poolers.get(pooler, self.embed_dim)
 
         if shared_perceiver:
             self.perceiver = Perceiver(

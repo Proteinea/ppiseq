@@ -1,7 +1,5 @@
 import os
 
-from ppi_research.layers import poolers
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -11,7 +9,6 @@ from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import EmbedConcatConvBERTModel
-from ppi_research.preprocessing.prott5 import sequence_preprocessing
 from ppi_research.utils import create_run_name
 from ppi_research.utils import parse_common_args
 from ppi_research.utils import prott5_checkpoint_mapping
@@ -23,6 +20,7 @@ from transformers import Trainer
 from transformers import TrainingArguments
 import hydra
 from omegaconf import DictConfig
+from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 
 @hydra.main(
@@ -39,13 +37,10 @@ def main(cfg: DictConfig):
     tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5EncoderModel.from_pretrained(ckpt)
 
-    pooler = poolers.get(
-        cfg.downstream_config.pooler,
-        embed_dim=model.config.hidden_size,
-    )
     downstream_model = EmbedConcatConvBERTModel(
         backbone=model,
-        pooler=pooler,
+        pooler=cfg.pooler,
+        concat_first=cfg.embed_concat_config.concat_first,
         model_name="prott5",
         embedding_name="last_hidden_state",
     )
@@ -53,7 +48,8 @@ def main(cfg: DictConfig):
     run_name = create_run_name(
         backbone=ckpt,
         setup="convbert_embed_concat",
-        pooler=cfg.downstream_config.pooler,
+        pooler=cfg.pooler,
+        concat_first=cfg.embed_concat_config.concat_first,
         seed=seed,
     )
 
@@ -85,19 +81,17 @@ def main(cfg: DictConfig):
         save_safetensors=cfg.train_config.save_safetensors,
     )
 
-    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        cfg.dataset_config.dataset_name,
-        sequence_preprocessing,
-    )
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(cfg.dataset_name)
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.PairCollator(
             tokenizer=tokenizer,
-            is_split_into_words=True,
+            model_name="prott5",
             max_length=max_length,
             random_swapping=True,
+            labels_preprocessing_function=log_transform_labels,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,

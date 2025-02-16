@@ -9,20 +9,21 @@ class AttnPoolAddModel(nn.Module):
         self,
         backbone: nn.Module,
         pooler: nn.Module | str,
-        shared: bool = True,
+        shared_attention: bool = True,
         model_name: str | None = None,
         embedding_name: str | None = None,
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
+        self.shared_attention = shared_attention
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,
             model_name=model_name,
             embedding_name=embedding_name,
             trainable=True,
         )
-        self.pooler = poolers.get(pooler)
-        if shared:
+        self.pooler = poolers.get(pooler, self.embed_dim)
+        if shared_attention:
             self.attn = nn.MultiheadAttention(
                 embed_dim=self.embed_dim,
                 num_heads=8,
@@ -79,7 +80,7 @@ class AttnPoolAddModel(nn.Module):
             dtype=receptor_embed.dtype,
         )
 
-        if self.shared:
+        if self.shared_attention:
             output_1, _ = self.attn(
                 query=ligand_embed,
                 key=receptor_embed,

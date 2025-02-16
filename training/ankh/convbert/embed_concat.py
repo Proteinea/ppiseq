@@ -1,7 +1,5 @@
 import os
 
-from ppi_research.layers import poolers
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -17,6 +15,7 @@ from transformers import AutoTokenizer
 from transformers import T5EncoderModel
 from transformers import Trainer
 from transformers import TrainingArguments
+from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 import hydra
 from omegaconf import DictConfig
@@ -34,13 +33,10 @@ def main(cfg: DictConfig):
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = T5EncoderModel.from_pretrained(ckpt)
 
-    pooler = poolers.get(
-        cfg.downstream_config.pooler,
-        embed_dim=model.config.hidden_size,
-    )
     downstream_model = EmbedConcatConvBERTModel(
         backbone=model,
-        pooler=pooler,
+        pooler=cfg.pooler,
+        concat_first=cfg.embed_concat_config.concat_first,
         model_name="ankh",
         embedding_name="last_hidden_state",
     )
@@ -48,7 +44,8 @@ def main(cfg: DictConfig):
     run_name = create_run_name(
         backbone=ckpt,
         setup="convbert_embed_concat",
-        pooler=cfg.downstream_config.pooler,
+        pooler=cfg.pooler,
+        concat_first=cfg.embed_concat_config.concat_first,
         seed=seed,
     )
 
@@ -81,14 +78,17 @@ def main(cfg: DictConfig):
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        cfg.dataset_config.dataset_name
+        cfg.dataset_name
     )
 
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
         data_collator=data_adapters.PairCollator(
-            tokenizer=tokenizer, max_length=max_length, random_swapping=True
+            tokenizer=tokenizer,
+            model_name="ankh",
+            max_length=max_length,
+            labels_preprocessing_function=log_transform_labels,
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
