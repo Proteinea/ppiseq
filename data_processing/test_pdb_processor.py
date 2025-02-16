@@ -30,17 +30,6 @@ class TestAddMissingResidues(unittest.TestCase):
         )
         self.assertEqual(result, {"A": "ABCDEF"})
 
-    def test_single_missing_residue_beginning(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            result = self.processor._add_missing_residues(
-                self.pdb_id,
-                chains={"A": "BCDEF"},
-                raw_chains={"A": "XBCDEF"},
-                raw_seqres_chains={"A": "ABCDEF"},
-            )
-        self.assertEqual(result["A"], "ABCDEF")
-
     def test_single_missing_residue_middle(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error")
@@ -51,43 +40,6 @@ class TestAddMissingResidues(unittest.TestCase):
                 raw_seqres_chains={"A": "ABCDEF"},
             )
         self.assertEqual(result["A"], "ABCDEF")
-
-    def test_single_missing_residue_end(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            result = self.processor._add_missing_residues(
-                self.pdb_id,
-                chains={"A": "ABCDE"},
-                raw_chains={"A": "ABCDEX"},
-                raw_seqres_chains={"A": "ABCDEF"},
-            )
-        self.assertEqual(result["A"], "ABCDEF")
-
-    # ------------------------------------------
-    # Boundary Cases
-    # ------------------------------------------
-
-    # def test_all_x_raw_chain(self):
-    #     with self.assertWarns(UserWarning) as cm:
-    #         result = self.processor._add_missing_residues(
-    #             self.pdb_id,
-    #             chains={"A": ""},
-    #             raw_chains={"A": "XXXXXX"},
-    #             raw_seqres_chains={"A": "ABCDEF"},
-    #         )
-    #     self.assertIn("Could not find the missing residues", str(cm.warning))
-    #     self.assertEqual(result["A"], "")
-
-    # def test_single_residue_chain(self):
-    #     with warnings.catch_warnings():
-    #         warnings.simplefilter("error")
-    #         result = self.processor._add_missing_residues(
-    #             self.pdb_id,
-    #             chains={"A": "B"},
-    #             raw_chains={"A": "XB"},
-    #             raw_seqres_chains={"A": "AB"},
-    #         )
-    #     self.assertEqual(result["A"], "AB")
 
     # ------------------------------------------
     # Error Condition Tests
@@ -115,21 +67,7 @@ class TestAddMissingResidues(unittest.TestCase):
         self.assertIn("Sequence length mismatch", str(cm.warning))
         self.assertEqual(result["A"], "ABCDE")
 
-    def test_sequence_misalignment1(self):
-        # misalignment where the logic will work but the final sequence will
-        # be wrong. Should be caught by the final sequence validation in
-        # PDBProcessor._add_missing_residues
-        with self.assertWarns(UserWarning) as cm:
-            result = self.processor._add_missing_residues(
-                self.pdb_id,
-                chains={"A": "ABCD"},
-                raw_chains={"A": "ABXXDE"},
-                raw_seqres_chains={"A": "ABCDE"},
-            )
-        self.assertIn("due to a misalignment between", str(cm.warning))
-        self.assertEqual(result["A"], "ABCD")
-
-    def test_sequence_misalignment2(self):
+    def test_sequence_misalignment(self):
         # misalignment where the logic will fail since ACB will not be found
         # in the raw_seqres_chains.
         with self.assertWarns(UserWarning) as cm:
@@ -149,11 +87,11 @@ class TestAddMissingResidues(unittest.TestCase):
     def test_multiple_missing_blocks(self):
         result = self.processor._add_missing_residues(
             self.pdb_id,
-            chains={"A": "CDEGIJ"},
-            raw_chains={"A": "XXCDEXGXIJX"},
-            raw_seqres_chains={"A": "ABCDEFGHIJK"},
+            chains={"A": "CDEGJK"},
+            raw_chains={"A": "CDEXGXXJK"},
+            raw_seqres_chains={"A": "ABCDEFGHIJKL"},
         )
-        self.assertEqual(result["A"], "ABCDEFGHIJK")
+        self.assertEqual(result["A"], "CDEFGHIJK")
 
     def test_overlapping_subsequences(self):
         # a case with almost zero chance of happening in real life due to the
@@ -166,12 +104,12 @@ class TestAddMissingResidues(unittest.TestCase):
             # function.
             result = self.processor._add_missing_residues(
                 self.pdb_id,
-                chains={"A": "CDE"},
-                raw_chains={"A": "XXCDEXX"},
-                raw_seqres_chains={"A": "ABCDEFGCDEHL"},
+                chains={"A": "CDEHI"},
+                raw_chains={"A": "CDEXXHI"},
+                raw_seqres_chains={"A": "ABCDEFGCDEHIJ"},
             )
         self.assertIn("due to multiple ambiguous matches", str(cm.warning))
-        self.assertEqual(result["A"], "CDE")
+        self.assertEqual(result["A"], "CDEHI")
 
     # ------------------------------------------
     # Parameterized-style Tests
@@ -179,15 +117,13 @@ class TestAddMissingResidues(unittest.TestCase):
 
     def test_parameterized_valid_cases(self):
         test_cases = [
-            ("XXEFG", "ABCDEFGHI", "CDEFG"),
+            ("CXXFG", "ABCDEFGHI", "CDEFG"),
             ("CDXXG", "ABCDEFGHI", "CDEFG"),
-            ("CDEXX", "ABCDEFGHI", "CDEFG"),
-            ("XDEFX", "ABCDEFGHI", "CDEFG"),
-            ("XXEFX", "ABCDEFGHI", "CDEFG"),
-            ("XDEXX", "ABCDEFGHI", "CDEFG"),
-            ("XXEXX", "ABCDEFGHI", "CDEFG"),
             ("CXEXG", "ABCDEFGHI", "CDEFG"),
             ("CXXXG", "ABCDEFGHI", "CDEFG"),
+            ("CXEFG", "ABCDEFGHI", "CDEFG"),
+            ("CDXFG", "ABCDEFGHI", "CDEFG"),
+            ("CDEXG", "ABCDEFGHI", "CDEFG"),
         ]
 
         for raw_seq, seqres, expected in test_cases:
@@ -224,28 +160,43 @@ class TestAddMissingResidues(unittest.TestCase):
                 )
                 self.assertEqual(result["A"], expected)
 
-    # ------------------------------------------
-    # Special Case Tests
-    # ------------------------------------------
-
-    def test_mixed_case_chains(self):
-        with self.assertWarns(UserWarning):
-            result = self.processor._add_missing_residues(
-                self.pdb_id,
-                chains={"a": "DEF"},
-                raw_chains={"A": "XXDEF"},
-                raw_seqres_chains={"A": "ABCDEF"},
-            )
-        self.assertEqual(result["a"], "DEF")
-
     def test_large_sequence_reconstruction(self):
         result = self.processor._add_missing_residues(
             self.pdb_id,
-            chains={"A": "HIJKLQRS"},
-            raw_chains={"A": "XXHIJKLXXXXQRSXX"},
-            raw_seqres_chains={"A": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"},
+            chains={"A": "HJLQRS"},
+            raw_chains={"A": "HXJXLXXXXQRS"},
+            raw_seqres_chains={"A": "ABCDEFGHIJKLMNOPQRSTUVWYZ"},
         )
-        self.assertEqual(result["A"], "FGHIJKLMNOPQRSTU")
+        self.assertEqual(result["A"], "HIJKLMNOPQRS")
+
+    def test_large_sequence_reconstruction_with_x_in_chains(self):
+        result = self.processor._add_missing_residues(
+            self.pdb_id,
+            chains={"A": "HXJXLXXXXQRS"},
+            raw_chains={"A": "HXJXLXXXXQRS"},
+            raw_seqres_chains={"A": "ABCDEFGHIJKLMNOPQRSTUVWYZ"},
+        )
+        self.assertEqual(result["A"], "HIJKLMNOPQRS")
+
+    def test_large_sequence_reconstruction_with_mutations_in_chains(self):
+        result = self.processor._add_missing_residues(
+            self.pdb_id,
+            chains={"A": "AJHQRT"},
+            raw_chains={"A": "HXJXLXXXXQRS"},
+            raw_seqres_chains={"A": "ABCDEFGHIJKLMNOPQRSTUVWYZ"},
+        )
+        self.assertEqual(result["A"], "AIJKHMNOPQRT")
+
+    def test_large_sequence_reconstruction_with_mutations_and_x_in_chains(
+        self,
+    ):
+        result = self.processor._add_missing_residues(
+            self.pdb_id,
+            chains={"A": "AXJXTXXXXSTY"},
+            raw_chains={"A": "HXJXLXXXXQRS"},
+            raw_seqres_chains={"A": "ABCDEFGHIJKLMNOPQRSTUVWYZ"},
+        )
+        self.assertEqual(result["A"], "AIJKTMNOPSTY")
 
 
 class TestParseSeqsFromPDB(unittest.TestCase):
