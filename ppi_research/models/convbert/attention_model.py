@@ -1,10 +1,17 @@
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 from transformers.models import convbert
+from ppi_research.layers import poolers
 
 
 class AttnPoolAddConvBERTModel(nn.Module):
-    def __init__(self, backbone, pooler, model_name, embedding_name):
+    def __init__(
+        self,
+        backbone: nn.Module,
+        pooler: nn.Module | str,
+        model_name: str,
+        embedding_name: str,
+    ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.backbone = BackbonePairEmbeddingExtraction(
@@ -13,7 +20,7 @@ class AttnPoolAddConvBERTModel(nn.Module):
             embedding_name=embedding_name,
             trainable=False,
         )
-        self.pooler = pooler
+        self.pooler = poolers.get(pooler)
 
         convbert_config = convbert.ConvBertConfig(
             hidden_size=self.embed_dim,
@@ -33,69 +40,66 @@ class AttnPoolAddConvBERTModel(nn.Module):
             bias=False,
             batch_first=True,
         )
-        self.output = nn.Linear(self.embed_dim, 1)
+        self.regressor = nn.Linear(self.embed_dim, 1)
         self.reset_parameters()
 
     def reset_parameters(self):
         initrange = 0.1
-        self.output.bias.data.zero_()
-        self.output.weight.data.uniform_(-initrange, initrange)
+        self.regressor.bias.data.zero_()
+        self.regressor.weight.data.uniform_(-initrange, initrange)
 
     def forward(
         self,
-        protein_1,
-        protein_2,
-        attention_mask_1=None,
-        attention_mask_2=None,
+        ligand_input_ids,
+        receptor_input_ids,
+        ligand_attention_mask,
+        receptor_attention_mask,
         labels=None,
     ):
-        protein_1_embed, protein_2_embed = self.backbone(
-            protein_1,
-            protein_2,
-            attention_mask_1,
-            attention_mask_2,
+        ligand_embed, receptor_embed = self.backbone(
+            ligand_input_ids,
+            receptor_input_ids,
+            ligand_attention_mask,
+            receptor_attention_mask,
         )
 
-        attention_mask_1 = attention_mask_1.to(
-            device=protein_1_embed.device,
-            dtype=protein_1_embed.dtype,
+        ligand_attention_mask = ligand_attention_mask.to(
+            device=ligand_embed.device,
+            dtype=ligand_embed.dtype,
         )
 
-        attention_mask_2 = attention_mask_2.to(
-            device=protein_2_embed.device,
-            dtype=protein_2_embed.dtype,
+        receptor_attention_mask = receptor_attention_mask.to(
+            device=receptor_embed.device,
+            dtype=receptor_embed.dtype,
         )
 
-        protein_1_embed = self.convbert_layer(protein_1_embed)[0]
-        protein_2_embed = self.convbert_layer(protein_2_embed)[0]
+        ligand_embed = self.convbert_layer(ligand_embed)[0]
+        receptor_embed = self.convbert_layer(receptor_embed)[0]
 
         output_1, _ = self.attn(
-            query=protein_1_embed,
-            key=protein_2_embed,
-            value=protein_2_embed,
-            key_padding_mask=attention_mask_2.log(),
+            query=ligand_embed,
+            key=receptor_embed,
+            value=receptor_embed,
+            key_padding_mask=receptor_attention_mask.log(),
             need_weights=False,
         )
         output_2, _ = self.attn(
-            query=protein_2_embed,
-            key=protein_1_embed,
-            value=protein_1_embed,
-            key_padding_mask=attention_mask_1.log(),
+            query=receptor_embed,
+            key=ligand_embed,
+            value=ligand_embed,
+            key_padding_mask=ligand_attention_mask.log(),
             need_weights=False,
         )
 
-        output_1 = output_1 + protein_1_embed
-        output_2 = output_2 + protein_2_embed
-        pooled_output_1 = self.pooler(output_1, attention_mask_1)
-        pooled_output_2 = self.pooler(output_2, attention_mask_2)
+        output_1 = output_1 + ligand_embed
+        output_2 = output_2 + receptor_embed
+        pooled_output_1 = self.pooler(output_1, ligand_attention_mask)
+        pooled_output_2 = self.pooler(output_2, receptor_attention_mask)
         pooled_output = pooled_output_1 + pooled_output_2
-        logits = self.output(pooled_output)
+        logits = self.regressor(pooled_output)
 
         loss = None
         if labels is not None:
             loss = nn.functional.mse_loss(input=logits, target=labels)
 
-        return {
-            "logits": logits,
-            "loss": loss,
-        }
+        return {"logits": logits, "loss": loss}

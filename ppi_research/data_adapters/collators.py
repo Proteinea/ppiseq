@@ -1,135 +1,141 @@
 from __future__ import annotations
-from typing import Callable, Dict, Any
+import typing
 import torch
-import random
+from ppi_research.data_adapters import preprocessing_pipelines
+
+
+def validate_labels_preprocessing_function(
+    labels_preprocessing_function,
+) -> None:
+    if labels_preprocessing_function is not None and not callable(
+        labels_preprocessing_function
+    ):
+        raise ValueError("`labels_preprocessing_function` is not callable.")
 
 
 class PairCollator:
     def __init__(
         self,
-        tokenizer: Callable,
+        tokenizer: typing.Callable,
+        model_name: str,
         max_length: int | None = None,
-        is_split_into_words: bool = False,
-        random_swapping=False,
-        swapping_prob=0.5,
-        preprocessing_function: Callable | None = None,
+        labels_preprocessing_function: typing.Callable | None = None,
     ):
+        validate_labels_preprocessing_function(labels_preprocessing_function)
         self.tokenizer = tokenizer
+        self.model_name = model_name
         self.max_length = max_length
-        self.is_split_into_words = is_split_into_words
-        self.random_swapping = random_swapping
-        self.swapping_prob = swapping_prob
-        self.preprocessing_function = preprocessing_function
+        self.preprocessor = (
+            preprocessing_pipelines.SequencePairPreprocessingPipeline(
+                model_name
+            )
+        )
+        self.labels_preprocessing_function = labels_preprocessing_function
 
     def __call__(self, batch):
-        seqs_1, seqs_2, labels = [], [], []
+        ligand_sequences, receptor_sequences, labels = [], [], []
         for b in batch:
-            if self.preprocessing_function is not None:
-                protein_1 = self.preprocessing_function(b["protein_1"])
-                protein_2 = self.preprocessing_function(b["protein_2"])
-            else:
-                protein_1 = b["protein_1"]
-                protein_2 = b["protein_2"]
+            ligand_sequence = b["ligand"]
+            receptor_sequence = b["receptor"]
+            label = b["affinity"]
 
-            if self.random_swapping:
-                if random.random() < self.swapping_prob:
-                    seqs_1.append(protein_1)
-                    seqs_2.append(protein_2)
-                else:
-                    seqs_1.append(protein_2)
-                    seqs_2.append(protein_1)
-            else:
-                seqs_1.append(protein_1)
-                seqs_2.append(protein_2)
-            labels.append(b["affinity"])
+            ligand_sequence, receptor_sequence = self.preprocessor.preprocess(
+                ligand_sequence,
+                receptor_sequence,
+            )
 
-        seqs_1_encoded = self.tokenizer(
-            seqs_1,
-            add_special_tokens=True,
+            if self.labels_preprocessing_function is not None:
+                label = self.labels_preprocessing_function(label)
+
+            ligand_sequences.append(ligand_sequence)
+            receptor_sequences.append(receptor_sequence)
+            labels.append(label)
+
+        # add_special_tokens=False because special tokens are already
+        # added in the preprocessing function.
+        ligand_sequences_encoded = self.tokenizer(
+            ligand_sequences,
+            add_special_tokens=False,
             max_length=self.max_length,
             padding="longest",
             truncation=self.max_length is not None,
             return_tensors="pt",
-            is_split_into_words=self.is_split_into_words,
+            is_split_into_words=True,
         )
 
-        seqs_2_encoded = self.tokenizer(
-            seqs_2,
-            add_special_tokens=True,
+        receptor_sequences_encoded = self.tokenizer(
+            receptor_sequences,
+            add_special_tokens=False,
             max_length=self.max_length,
             padding="longest",
             truncation=self.max_length is not None,
             return_tensors="pt",
-            is_split_into_words=self.is_split_into_words,
+            is_split_into_words=True,
         )
 
         labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
 
         return {
-            "protein_1": seqs_1_encoded["input_ids"],
-            "protein_2": seqs_2_encoded["input_ids"],
-            "attention_mask_1": seqs_1_encoded["attention_mask"],
-            "attention_mask_2": seqs_2_encoded["attention_mask"],
+            "ligand_input_ids": ligand_sequences_encoded["input_ids"],
+            "receptor_input_ids": receptor_sequences_encoded["input_ids"],
+            "ligand_attention_mask": ligand_sequences_encoded[
+                "attention_mask"
+            ],
+            "receptor_attention_mask": receptor_sequences_encoded[
+                "attention_mask"
+            ],
             "labels": labels,
         }
-
-
-def randomly_swap_sequences(seq_1, seq_2, swapping_prob=0.5):
-    if random.random() < swapping_prob:
-        return seq_2, seq_1
-    else:
-        return seq_1, seq_2
 
 
 class SequenceConcatCollator:
     def __init__(
         self,
-        tokenizer,
-        random_swapping=False,
-        swapping_prob=0.5,
-        preprocessing_function: Callable | None = None,
+        tokenizer: typing.Callable,
+        model_name: str,
         max_length: int | None = None,
-        is_split_into_words: bool = False,
+        labels_preprocessing_function: typing.Callable | None = None,
     ):
-        if preprocessing_function is not None and not callable(
-            preprocessing_function
-        ):
-            raise ValueError("`preprocessing_function` is not callable.")
-
+        validate_labels_preprocessing_function(labels_preprocessing_function)
         self.tokenizer = tokenizer
-        self.random_swapping = random_swapping
-        self.swapping_prob = swapping_prob
-        self.preprocessing_function = preprocessing_function
+        self.model_name = model_name
         self.max_length = max_length
-        self.is_split_into_words = is_split_into_words
+        self.labels_preprocessing_function = labels_preprocessing_function
+        self.preprocessor = (
+            preprocessing_pipelines.SequenceConcatPreprocessingPipeline(
+                model_name
+            )
+        )
 
     def __call__(self, batch):
         sequences, labels = [], []
 
         for b in batch:
-            if self.random_swapping:
-                inputs = randomly_swap_sequences(
-                    b["protein_1"],
-                    b["protein_2"],
-                    self.swapping_prob,
-                )
-            else:
-                inputs = (b["protein_1"], b["protein_2"])
+            ligand_sequence = b["ligand"]
+            receptor_sequence = b["receptor"]
+            label = b["affinity"]
 
-            if self.preprocessing_function is not None:
-                inputs = self.preprocessing_function(inputs)
+            sequence = self.preprocessor.preprocess(
+                ligand_sequence,
+                receptor_sequence,
+            )
 
-            sequences.append(inputs)
-            labels.append(b["affinity"])
+            if self.labels_preprocessing_function is not None:
+                label = self.labels_preprocessing_function(label)
 
+            sequences.append(sequence)
+            labels.append(label)
+
+        # add_special_tokens=False because special tokens are already
+        # added in the preprocessing function.
         encoded_sequences = self.tokenizer(
             sequences,
-            add_special_tokens=True,
+            add_special_tokens=False,
             max_length=self.max_length,
             padding="longest",
             truncation=self.max_length is not None,
             return_tensors="pt",
-            is_split_into_words=self.is_split_into_words,
+            is_split_into_words=True,
         )
         labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
 
@@ -144,77 +150,84 @@ class MultiChainCollator:
     def __init__(
         self,
         tokenizer,
+        model_name: str,
         max_length: int | None = None,
-        is_split_into_words: bool = False,
-        preprocessing_function: Callable | None = None,
+        labels_preprocessing_function: typing.Callable | None = None,
     ):
+        validate_labels_preprocessing_function(labels_preprocessing_function)
         self.tokenizer = tokenizer
+        self.model_name = model_name
         self.max_length = max_length
-        self.is_split_into_words = is_split_into_words
-        self.preprocessing_function = preprocessing_function
+        self.labels_preprocessing_function = labels_preprocessing_function
+        self.preprocessor = (
+            preprocessing_pipelines.MultiChainPreprocessingPipeline(model_name)
+        )
 
-    def __call__(self, batch: list[Dict[str, Any]]):
-        sequences_1 = []
-        sequences_2 = []
-        chain_ids_1 = []
-        chain_ids_2 = []
+    def __call__(self, batch: list[typing.Dict[str, typing.Any]]):
+        ligand_sequences = []
+        receptor_sequences = []
+        ligand_chain_ids = []
+        receptor_chain_ids = []
         labels = []
 
         for i, b in enumerate(batch):
             # list of seqs
-            protein_1_chains = b["protein_1_chains"]
-            protein_2_chains = b["protein_2_chains"]
-            num_chains_1 = len(protein_1_chains)
-            num_chains_2 = len(protein_2_chains)
+            ligand_sequence = b["ligand"]
+            receptor_sequence = b["receptor"]
+            label = b["affinity"]
 
-            if self.preprocessing_function is not None:
-                protein_1_chains = [
-                    self.preprocessing_function(chain)
-                    for chain in protein_1_chains
-                ]
+            ligand_sequence, receptor_sequence = self.preprocessor.preprocess(
+                ligand_sequence,
+                receptor_sequence,
+            )
 
-                protein_2_chains = [
-                    self.preprocessing_function(chain)
-                    for chain in protein_2_chains
-                ]
+            if self.labels_preprocessing_function is not None:
+                label = self.labels_preprocessing_function(label)
 
-            sequences_1.extend(protein_1_chains)
-            sequences_2.extend(protein_2_chains)
+            num_ligand_chains = len(ligand_sequence)
+            num_receptor_chains = len(receptor_sequence)
 
-            chain_ids_1 += [i] * num_chains_1
-            chain_ids_2 += [i] * num_chains_2
-            labels.append(b["affinity"])
+            ligand_sequences.extend(ligand_sequence)
+            receptor_sequences.extend(receptor_sequence)
 
-        sequences_1_encoded = self.tokenizer(
-            sequences_1,
+            ligand_chain_ids += [i] * num_ligand_chains
+            receptor_chain_ids += [i] * num_receptor_chains
+            labels.append(label)
+
+        ligand_sequences_encoded = self.tokenizer(
+            ligand_sequences,
             add_special_tokens=True,
             max_length=self.max_length,
             padding="longest",
             truncation=self.max_length is not None,
             return_tensors="pt",
-            is_split_into_words=self.is_split_into_words,
+            is_split_into_words=True,
         )
 
-        sequences_2_encoded = self.tokenizer(
-            sequences_2,
+        receptor_sequences_encoded = self.tokenizer(
+            receptor_sequences,
             add_special_tokens=True,
             max_length=self.max_length,
             padding="longest",
             truncation=self.max_length is not None,
             return_tensors="pt",
-            is_split_into_words=self.is_split_into_words,
+            is_split_into_words=True,
         )
 
-        chain_ids_1 = torch.tensor(chain_ids_1, dtype=torch.long)
-        chain_ids_2 = torch.tensor(chain_ids_2, dtype=torch.long)
+        ligand_chain_ids = torch.tensor(ligand_chain_ids, dtype=torch.long)
+        receptor_chain_ids = torch.tensor(receptor_chain_ids, dtype=torch.long)
         labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(-1)
 
         return {
-            "input_ids_1": sequences_1_encoded["input_ids"],
-            "input_ids_2": sequences_2_encoded["input_ids"],
-            "attention_mask_1": sequences_1_encoded["attention_mask"],
-            "attention_mask_2": sequences_2_encoded["attention_mask"],
-            "chain_ids_1": chain_ids_1,
-            "chain_ids_2": chain_ids_2,
+            "ligand_input_ids": ligand_sequences_encoded["input_ids"],
+            "receptor_input_ids": receptor_sequences_encoded["input_ids"],
+            "ligand_attention_mask": ligand_sequences_encoded[
+                "attention_mask"
+            ],
+            "receptor_attention_mask": receptor_sequences_encoded[
+                "attention_mask"
+            ],
+            "ligand_chain_ids": ligand_chain_ids,
+            "receptor_chain_ids": receptor_chain_ids,
             "labels": labels,
         }

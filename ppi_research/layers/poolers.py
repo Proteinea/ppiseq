@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import torch
 from torch import nn
+from ppi_research.layers.attention import softmax as softmax_fn
 
 
 def global_mean_pooling1d(
@@ -59,9 +60,15 @@ class GlobalMaxPooling1D(nn.Module):
 
 
 class AttentionPooling1D(nn.Module):
-    def __init__(self, embed_dim: int, bias=False):
+    def __init__(
+        self,
+        embed_dim: int,
+        add_one_to_softmax: bool = False,
+        bias: bool = False,
+    ):
         super().__init__()
         self.w_proj = nn.Linear(embed_dim, 1, bias=bias)
+        self.add_one_to_softmax = add_one_to_softmax
 
     def forward(
         self,
@@ -77,11 +84,14 @@ class AttentionPooling1D(nn.Module):
                 padding_mask.logical_not(), -torch.inf
             )
 
-        probs = nn.functional.softmax(outputs, dim=-1)
+        if self.add_one_to_softmax:
+            probs = softmax_fn(outputs, dim=-1)
+        else:
+            probs = nn.functional.softmax(outputs, dim=-1)
         return torch.sum(x * probs.unsqueeze(-1), dim=dim)
 
 
-class GatedPooling1D(nn.Module):
+class WeightedAveragePooling1D(nn.Module):
     def __init__(self, embed_dim: int, bias=False):
         super().__init__()
         self.w_proj = nn.Linear(embed_dim, 1, bias=bias)
@@ -101,7 +111,7 @@ class GatedPooling1D(nn.Module):
             )
 
         gates = nn.functional.sigmoid(outputs)
-        return torch.sum(x * gates.unsqueeze(-1), dim=dim)
+        return torch.mean(x * gates.unsqueeze(-1), dim=dim)
 
 
 class ChainsPoolerV2(nn.Module):
@@ -172,11 +182,14 @@ class ChainsPooler(nn.Module):
 available_poolers = {
     "avg": GlobalAvgPooling1D,
     "attn": AttentionPooling1D,
-    "gated": GatedPooling1D,
+    "weighted_avg": WeightedAveragePooling1D,
 }
 
 
 def get(identifier, *args, **kwargs):
+    if isinstance(identifier, nn.Module):
+        return identifier
+
     pooler = available_poolers.get(identifier)
     if pooler is None:
         available_pooler_names = list(available_poolers.keys())

@@ -1,89 +1,41 @@
 from __future__ import annotations
 from ppi_research.data_adapters.dataset_adapters import PPIDataset
 from datasets import load_dataset
-from torch.utils.data import ConcatDataset
+from ppi_research.data_adapters.dataset_adapters import ColumnNames
 
 
-def load_skempi2_ppi_dataset():
-    ds = load_dataset(
-        "proteinea/skempi2_ppi_dataset", data_dir="mutation splits"
+def load_ppb_affinity_dataset():
+    train, validation, test = load_dataset(
+        "proteinea/ppb_affinity",
+        "filtered",
+        split=["train", "validation", "test"],
+        trust_remote_code=True,
     )
+
+    column_names = ColumnNames(
+        ligand="Ligand Sequences",
+        receptor="Receptor Sequences",
+        label="KD(M)",
+    )
+
     train_ds = PPIDataset(
-        ds["train"],
-        sequence_column_names=["protein 1 sequence", "protein 2 sequence"],
-        label_column_name="affinity (pKd)",
+        train,
+        column_names,
     )
     val_ds = PPIDataset(
-        ds["validation"],
-        sequence_column_names=["protein 1 sequence", "protein 2 sequence"],
-        label_column_name="affinity (pKd)",
+        validation,
+        column_names,
     )
     test_ds = PPIDataset(
-        ds["test"],
-        sequence_column_names=["protein 1 sequence", "protein 2 sequence"],
-        label_column_name="affinity (pKd)",
+        test,
+        column_names,
     )
+
     return train_ds, {"validation": val_ds, "test": test_ds}
 
 
-def load_inhouse_fc2ra():
-    data_files = {
-        "train": "FcR2a_R131_train.csv",
-        "validation": "FcR2a_R131_test.csv",
-    }
-    ds = load_dataset("proteinea/inhouse-ppi-affinity", data_files=data_files)
-
-    seq_col_names = ["Sequence", "FcR2a_R131"]
-    label_name = "FcyRIIa.131R_Fold"
-    train_ds = PPIDataset(
-        ds["train"],
-        sequence_column_names=seq_col_names,
-        label_column_name=label_name,
-    )
-    val_ds = PPIDataset(
-        ds["validation"],
-        sequence_column_names=seq_col_names,
-        label_column_name=label_name,
-    )
-    return train_ds, {"validation": val_ds}
-
-
-def load_inhouse_fc2rb():
-    data_files = {
-        "train": "FcyRIIb_train.csv",
-        "validation": "FcyRIIb_test.csv",
-    }
-    ds = load_dataset("proteinea/inhouse-ppi-affinity", data_files=data_files)
-
-    seq_col_names = ["Sequence", "FcR2b"]
-    label_name = "FcyRIIb_Fold"
-    train_ds = PPIDataset(
-        ds["train"],
-        sequence_column_names=seq_col_names,
-        label_column_name=label_name,
-    )
-    val_ds = PPIDataset(
-        ds["validation"],
-        sequence_column_names=seq_col_names,
-        label_column_name=label_name,
-    )
-    return train_ds, {"validation": val_ds}
-
-
-def load_inhouse_fc2ra_and_fc2rb_mixture():
-    fc2ra_train, fc2ra_val = load_inhouse_fc2ra()
-    fc2rb_train, fc2rb_val = load_inhouse_fc2rb()
-
-    train_ds = ConcatDataset([fc2ra_train, fc2rb_train])
-    val_ds = ConcatDataset([fc2ra_val["validation"], fc2rb_val["validation"]])
-    return train_ds, {"validation": val_ds}
-
-
 available_datasets = {
-    "skempi2": load_skempi2_ppi_dataset,
-    "fc2ra": load_inhouse_fc2ra,
-    "fc2rb": load_inhouse_fc2rb,
-    "fc_mixture": load_inhouse_fc2ra_and_fc2rb_mixture,
+    "ppb_affinity": load_ppb_affinity_dataset,
 }
 
 

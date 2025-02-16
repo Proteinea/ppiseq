@@ -4,6 +4,7 @@ import torch
 from typing import Dict
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from transformers.models import convbert
+from ppi_research.layers import poolers
 
 
 def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
@@ -21,10 +22,10 @@ class MultiChainModel(nn.Module):
     def __init__(
         self,
         backbone: nn.Module,
-        ligand_global_pooler: nn.Module,
-        receptor_global_pooler: nn.Module,
-        ligand_chains_pooler: nn.Module,
-        receptor_chains_pooler: nn.Module,
+        ligand_global_pooler: nn.Module | str,
+        receptor_global_pooler: nn.Module | str,
+        ligand_chains_pooler: nn.Module | str,
+        receptor_chains_pooler: nn.Module | str,
         model_name: str,
         embedding_name: str,
         aggregation_method: str = "concat",
@@ -41,10 +42,10 @@ class MultiChainModel(nn.Module):
             else self.embed_dim
         )
 
-        self.ligand_global_pooler = ligand_global_pooler
-        self.receptor_global_pooler = receptor_global_pooler
-        self.ligand_chains_pooler = ligand_chains_pooler
-        self.receptor_chains_pooler = receptor_chains_pooler
+        self.ligand_global_pooler = poolers.get(ligand_global_pooler)
+        self.receptor_global_pooler = poolers.get(receptor_global_pooler)
+        self.ligand_chains_pooler = poolers.get(ligand_chains_pooler)
+        self.receptor_chains_pooler = poolers.get(receptor_chains_pooler)
 
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,
@@ -143,7 +144,8 @@ class MultiChainModel(nn.Module):
             mask = chain_ids == chain_id
             protein_embed_masked = protein_embed[mask, ...]
             pooled_chains = pooler(
-                protein_embed_masked, dim=0,
+                protein_embed_masked,
+                dim=0,
             )
 
             # .unsqueeze(0) to add a batch dimension.
@@ -218,11 +220,15 @@ class MultiChainModel(nn.Module):
 
         # Pool the embeddings
         ligand_pooled = self.ligand_global_pooler(
-            ligand_embed, ligand_attention_mask, dim=1,
+            ligand_embed,
+            ligand_attention_mask,
+            dim=1,
         )
 
         receptor_pooled = self.receptor_global_pooler(
-            receptor_embed, receptor_attention_mask, dim=1,
+            receptor_embed,
+            receptor_attention_mask,
+            dim=1,
         )
 
         # Process the chains
