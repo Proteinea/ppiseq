@@ -5,7 +5,13 @@ defaults:
   - model_configs@prott5: prott5
 
 
+backbone: ankh
 dataset_name: "ppb_affinity"
+pooler: avg
+
+label_transform_config:
+  log_base: 10
+  eps: 1e-10
 
 lora_config:
   r: 16
@@ -15,8 +21,12 @@ lora_config:
   dropout: 0.0
 
 
-pooler: avg
-
+multichain_config:
+  global_pooler: avg
+  chains_pooler: attention
+  use_ffn: true
+  bias: false
+  aggregation_method: concat
 
 attn_pool_add_config:
   shared_attn: true
@@ -24,7 +34,6 @@ attn_pool_add_config:
 
 embed_concat_config:
   concat_first: true
-
 
 perceiver_config:
   num_latents: 512

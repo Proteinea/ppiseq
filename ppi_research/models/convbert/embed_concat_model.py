@@ -1,3 +1,4 @@
+from __future__ import annotations
 import torch
 from ppi_research.layers import poolers
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction

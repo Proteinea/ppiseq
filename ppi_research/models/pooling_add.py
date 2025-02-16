@@ -1,3 +1,4 @@
+from __future__ import annotations
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 import torch

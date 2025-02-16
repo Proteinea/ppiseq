@@ -181,8 +181,13 @@ class ChainsPooler(nn.Module):
 # chains and pools them with an already existing pooler.
 available_poolers = {
     "avg": GlobalAvgPooling1D,
+    "max": GlobalMaxPooling1D,
     "attn": AttentionPooling1D,
     "weighted_avg": WeightedAveragePooling1D,
+    "mean": GlobalAvgPooling1D,
+    "weighted_mean": WeightedAveragePooling1D,
+    "attention": AttentionPooling1D,
+
 }
 
 

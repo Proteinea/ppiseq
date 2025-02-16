@@ -18,24 +18,27 @@ def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
         raise ValueError(f"Invalid aggregation method: {aggregation_method}")
 
 
-class MultiChainModel(nn.Module):
+class MultiChainConvBERTModel(nn.Module):
     def __init__(
         self,
         backbone: nn.Module,
-        ligand_global_pooler: nn.Module | str,
-        receptor_global_pooler: nn.Module | str,
-        ligand_chains_pooler: nn.Module | str,
-        receptor_chains_pooler: nn.Module | str,
+        global_pooler: nn.Module | str,
+        chains_pooler: nn.Module | str,
+        shared_global_pooler: bool = False,
+        shared_chains_pooler: bool = False,
         shared_convbert: bool = True,
-        model_name: str | None = None,
-        embedding_name: str | None = None,
         aggregation_method: str = "concat",
         use_ffn: bool = False,
         bias: bool = False,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.use_ffn = use_ffn
+        self.shared_global_pooler = shared_global_pooler
+        self.shared_chains_pooler = shared_chains_pooler
+        self.shared_convbert = shared_convbert
         self.aggregation_method = aggregation_method
         input_dim = (
             self.embed_dim * 2
@@ -43,18 +46,29 @@ class MultiChainModel(nn.Module):
             else self.embed_dim
         )
 
-        self.ligand_global_pooler = poolers.get(
-            ligand_global_pooler, self.embed_dim
-        )
-        self.receptor_global_pooler = poolers.get(
-            receptor_global_pooler, self.embed_dim
-        )
-        self.ligand_chains_pooler = poolers.get(
-            ligand_chains_pooler, self.embed_dim
-        )
-        self.receptor_chains_pooler = poolers.get(
-            receptor_chains_pooler, self.embed_dim
-        )
+        if self.shared_global_pooler:
+            self.global_pooler = poolers.get(
+                global_pooler, self.embed_dim
+            )
+        else:
+            self.ligand_global_pooler = poolers.get(
+                global_pooler, self.embed_dim
+            )
+            self.receptor_global_pooler = poolers.get(
+                global_pooler, self.embed_dim
+            )
+
+        if self.shared_chains_pooler:
+            self.chains_pooler = poolers.get(
+                chains_pooler, self.embed_dim
+            )
+        else:
+            self.ligand_chains_pooler = poolers.get(
+                chains_pooler, self.embed_dim
+            )
+            self.receptor_chains_pooler = poolers.get(
+                chains_pooler, self.embed_dim
+            )
 
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,
@@ -71,7 +85,7 @@ class MultiChainModel(nn.Module):
             conv_kernel_size=7,
         )
 
-        if shared_convbert:
+        if self.shared_convbert:
             self.convbert_layer = convbert.ConvBertLayer(convbert_config)
         else:
             self.ligand_convbert_layer = convbert.ConvBertLayer(
@@ -232,14 +246,25 @@ class MultiChainModel(nn.Module):
             ligand_embed = self.ligand_convbert_layer(ligand_embed)[0]
             receptor_embed = self.receptor_convbert_layer(receptor_embed)[0]
 
+        ligand_pooler = (
+            self.global_pooler
+            if self.shared_global_pooler
+            else self.ligand_global_pooler
+        )
+        receptor_pooler = (
+            self.global_pooler
+            if self.shared_global_pooler
+            else self.receptor_global_pooler
+        )
+
         # Pool the embeddings
-        ligand_pooled = self.ligand_global_pooler(
+        ligand_pooled = ligand_pooler(
             ligand_embed,
             ligand_attention_mask,
             dim=1,
         )
 
-        receptor_pooled = self.receptor_global_pooler(
+        receptor_pooled = receptor_pooler(
             receptor_embed,
             receptor_attention_mask,
             dim=1,
@@ -247,19 +272,29 @@ class MultiChainModel(nn.Module):
 
         # Process the chains
         if ligand_chain_ids is not None:
+            ligand_chains_pooler = (
+                self.chains_pooler
+                if self.shared_chains_pooler
+                else self.ligand_chains_pooler
+            )
             ligand_pooled_chains = self.process_chains_v2(
                 protein_embed=ligand_pooled,
                 chain_ids=ligand_chain_ids,
-                pooler=self.ligand_chains_pooler,
+                pooler=ligand_chains_pooler,
             )
         else:
             ligand_pooled_chains = ligand_pooled
 
         if receptor_chain_ids is not None:
+            receptor_chains_pooler = (
+                self.chains_pooler
+                if self.shared_chains_pooler
+                else self.receptor_chains_pooler
+            )
             receptor_pooled_chains = self.process_chains_v2(
                 protein_embed=receptor_pooled,
                 chain_ids=receptor_chain_ids,
-                pooler=self.receptor_chains_pooler,
+                pooler=receptor_chains_pooler,
             )
         else:
             receptor_pooled_chains = receptor_pooled

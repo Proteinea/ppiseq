@@ -1,5 +1,5 @@
 import os
-
+import functools
 from ppi_research.layers import poolers
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -107,7 +107,11 @@ def main(cfg: DictConfig):
             tokenizer=tokenizer,
             model_name="esm",
             max_length=max_length,
-            labels_preprocessing_function=log_transform_labels,
+            labels_preprocessing_function=functools.partial(
+                log_transform_labels,
+                base=cfg.label_transform_config.log_base,
+                eps=cfg.label_transform_config.eps,
+            ),
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,

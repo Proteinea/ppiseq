@@ -1,15 +1,15 @@
-import os
 import functools
+import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
-
+from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
-from ppi_research.data_adapters.collators import SequenceConcatCollator
 from ppi_research.metrics import compute_ppi_metrics
-from ppi_research.models import SequenceConcatConvBERTModel
+from ppi_research.models import MultiChainConvBERTModel
 from ppi_research.utils import create_run_name
 from ppi_research.utils import set_seed
 from transformers import T5EncoderModel
@@ -30,30 +30,46 @@ def main(cfg: DictConfig):
     ckpt = cfg.prott5.ckpt
     max_length = cfg.prott5.max_length
     seed = cfg.train_config.seed
+
     set_seed(seed=seed)
     print("Checkpoint:", ckpt)
     tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5EncoderModel.from_pretrained(ckpt)
 
-    downstream_model = SequenceConcatConvBERTModel(
+    downstream_model = MultiChainConvBERTModel(
         backbone=model,
-        pooler=cfg.pooler,
+        global_pooler=cfg.multichain_config.global_pooler,
+        chains_pooler=cfg.multichain_config.chains_pooler,
+        shared_global_pooler=cfg.multichain_config.shared_global_pooler,
+        shared_chains_pooler=cfg.multichain_config.shared_chains_pooler,
+        shared_convbert=cfg.multichain_config.shared_convbert,
+        aggregation_method=cfg.multichain_config.aggregation_method,
+        use_ffn=cfg.multichain_config.use_ffn,
+        bias=cfg.multichain_config.bias,
         model_name="prott5",
         embedding_name="last_hidden_state",
     )
+
     run_name = create_run_name(
         backbone=ckpt,
-        setup="convbert_sequence_concat",
-        pooler=cfg.pooler,
+        setup="convbert_multichain",
         seed=seed,
+        shared_convbert=cfg.multichain_config.shared_convbert,
+        aggregation_method=cfg.multichain_config.aggregation_method,
+        use_ffn=cfg.multichain_config.use_ffn,
+        bias=cfg.multichain_config.bias,
+        global_pooler=cfg.multichain_config.global_pooler,
+        chains_pooler=cfg.multichain_config.chains_pooler,
+        shared_global_pooler=cfg.multichain_config.shared_global_pooler,
+        shared_chains_pooler=cfg.multichain_config.shared_chains_pooler,
     )
 
     training_args = TrainingArguments(
         output_dir=run_name + "_weights",
         run_name=run_name,
         num_train_epochs=cfg.train_config.num_train_epochs,
-        per_device_train_batch_size=cfg.train_config.per_device_train_batch_size, # noqa
-        per_device_eval_batch_size=cfg.train_config.per_device_eval_batch_size,
+        per_device_train_batch_size=cfg.train_config.per_device_train_batch_size,  # noqa
+        per_device_eval_batch_size=cfg.train_config.per_device_eval_batch_size,  # noqa
         warmup_steps=cfg.train_config.warmup_steps,
         learning_rate=cfg.train_config.learning_rate,
         weight_decay=cfg.train_config.weight_decay,
@@ -62,7 +78,7 @@ def main(cfg: DictConfig):
         do_train=True,
         do_eval=True,
         eval_strategy=cfg.train_config.eval_strategy,
-        gradient_accumulation_steps=cfg.train_config.gradient_accumulation_steps, # noqa
+        gradient_accumulation_steps=cfg.train_config.gradient_accumulation_steps,  # noqa
         fp16=False,
         fp16_opt_level="02",
         seed=seed,
@@ -81,7 +97,7 @@ def main(cfg: DictConfig):
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
-        data_collator=SequenceConcatCollator(
+        data_collator=data_adapters.MultiChainCollator(
             tokenizer=tokenizer,
             model_name="prott5",
             max_length=max_length,

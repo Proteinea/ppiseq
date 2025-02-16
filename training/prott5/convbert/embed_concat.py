@@ -1,5 +1,5 @@
 import os
-
+import functools
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -91,7 +91,11 @@ def main(cfg: DictConfig):
             model_name="prott5",
             max_length=max_length,
             random_swapping=True,
-            labels_preprocessing_function=log_transform_labels,
+            labels_preprocessing_function=functools.partial(
+                log_transform_labels,
+                base=cfg.label_transform_config.log_base,
+                eps=cfg.label_transform_config.eps,
+            ),
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
