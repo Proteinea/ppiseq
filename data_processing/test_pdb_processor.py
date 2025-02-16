@@ -1,10 +1,9 @@
 import unittest
 import warnings
-from typing import Dict, List, Optional
-from unittest.mock import MagicMock, patch
+from typing import List
+from unittest.mock import MagicMock
 
 from Bio.PDB import Chain, Model, Residue
-
 from pdb_processor import PDBProcessor
 
 
