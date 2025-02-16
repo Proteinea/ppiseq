@@ -307,10 +307,6 @@ class PDBProcessor:
                 f"{chain_id} in PDB {pdb_id} due to multiple ambiguous "
                 "matches. Skipping adding missing residues for this chain."
             )
-        else:
-            raise ValueError(
-                f"Unexpected return value from _find_subseq: {index}"
-            )
 
     def _add_missing_residues(
         self,
@@ -383,96 +379,38 @@ class PDBProcessor:
 
         for chain_id in chains_with_missing_residues:
             seqres_seq = raw_seqres_chains[chain_id]
-            seq = chains[chain_id]
+            seq = chains[chain_id].replace("X", "")
             raw_seq = raw_chains[chain_id]
             reconstructed_seq = ""
-            reconstructed_raw_seq = ""
-            seq_pos = 0
-            raw_seq_pos = 0
-            while raw_seq_pos < len(raw_seq):
+            raw_seq_splits = raw_seq.split("X")
+            first_fragment = raw_seq_splits[0]
+            last_fragment = raw_seq_splits[-1]
+            seqres_begin = self._find_subseq(seqres_seq, first_fragment)
+            seqres_end = self._find_subseq(seqres_seq, last_fragment)
+            if seqres_begin < 0 or seqres_end < 0:
+                self._print_find_warn(seqres_begin, pdb_id, chain_id)
+                continue
+            reconstructed_raw_seq = seqres_seq[
+                seqres_begin : seqres_end + len(last_fragment)
+            ]
+            acc_seq_count = 0
+            acc_raw_seq_count = 0
+            for fragment in raw_seq_splits:
+                reconstructed_seq += seq[
+                    acc_seq_count : acc_seq_count + len(fragment)
+                ]
+                acc_seq_count += len(fragment)
+                acc_raw_seq_count += len(fragment)
                 num_missing_residues = 0
-                while (
-                    raw_seq_pos + num_missing_residues < len(raw_seq)
-                    and raw_seq[raw_seq_pos + num_missing_residues] == "X"
-                ):
+                while (acc_raw_seq_count + num_missing_residues) < len(
+                    raw_seq
+                ) and raw_seq[acc_raw_seq_count + num_missing_residues] == "X":
                     num_missing_residues += 1
-                if num_missing_residues == 0:
-                    # no missing residues, just copy the residue from seq
-                    # to reconstructed_seq
-                    reconstructed_seq += seq[seq_pos]
-                    reconstructed_raw_seq += raw_seq[raw_seq_pos]
-                    seq_pos += 1
-                    raw_seq_pos += 1
-                elif raw_seq_pos == 0:
-                    # There are missing residues at the beginning of the
-                    # sequence. We have to find the next part of the raw
-                    # sequence that aligns with the SEQRES sequence to find
-                    # the end index of the missing residues in the SEQRES
-                    # then using num_missing_residues we can find the
-                    # beginning index of the missing residues in the SEQRES
-                    # sequence.
-                    subseqs = raw_seq.split("X")
-                    # subseqs[:num_missing_residues] will contain empty strings
-                    # for the missing residues at the beginning of the sequence
-                    # and the first non-empty string at index
-                    # num_missing_residues will be the subsequence that we want
-                    # to  align with the SEQRES sequence.
-                    subseq = subseqs[num_missing_residues]
-
-                    # missing_residues_end = seqres_seq.find(subseq)
-                    missing_residues_end = self._find_subseq(
-                        seq=seqres_seq, subseq=subseq
-                    )
-                    if missing_residues_end < 0:
-                        self._print_find_warn(
-                            missing_residues_end, pdb_id, chain_id
-                        )
-                        reconstructed_seq = seq
-                        break
-                    missing_residues_begin = (
-                        missing_residues_end - num_missing_residues
-                    )
-                    missing_residues = seqres_seq[
-                        missing_residues_begin:missing_residues_end
-                    ]
-                    reconstructed_seq += missing_residues
-                    reconstructed_raw_seq += missing_residues
-                    # skip all the Xs we just added
-                    raw_seq_pos += num_missing_residues
-                else:
-                    # we want to find where the reconstructed_raw_seq aligns
-                    # with the seqres_seq. Directly after the subsequence, will
-                    # be the missing residues.
-                    loc = seqres_seq.find(reconstructed_raw_seq)
-                    if loc < 0:
-                        self._print_find_warn(loc, pdb_id, chain_id)
-                        reconstructed_seq = seq
-                        break
-                    missing_residues_begin = loc + len(reconstructed_raw_seq)
-                    missing_residues_end = (
-                        missing_residues_begin + num_missing_residues
-                    )
-                    missing_residues = seqres_seq[
-                        missing_residues_begin:missing_residues_end
-                    ]
-                    reconstructed_seq += missing_residues
-                    reconstructed_raw_seq += missing_residues
-                    # skip all the Xs we just added
-                    raw_seq_pos += num_missing_residues
-            else:
-                # If the loop completes without breaking we perform a final
-                # check.
-                if seqres_seq.find(reconstructed_raw_seq) == -1:
-                    # Certain misaligment cases are not handled by the previous
-                    # logic. Check it here and warn the user if it happens and
-                    # skip adding the missing residues for this chain.
-                    warnings.warn(
-                        "Could not find the missing residues for chain "
-                        f"{chain_id} in PDB {pdb_id} due to a misalignment "
-                        "between seqeuences from ATOM records and SEQRES. "
-                        "Skipping adding missing residues for this chain."
-                    )
-                    reconstructed_seq = seq
+                reconstructed_seq += reconstructed_raw_seq[
+                    acc_raw_seq_count : acc_raw_seq_count
+                    + num_missing_residues
+                ]
+                acc_raw_seq_count += num_missing_residues
             chains[chain_id] = reconstructed_seq
         return chains
 
