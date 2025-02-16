@@ -162,7 +162,7 @@ class PDBProcessor:
 
                 last_pos = current_pos
                 residue_letter = self.apply_mutation_if_any(
-                    pdb_id, mutations_per_chain, chain, residue
+                    pdb_id, mutations_per_chain, chain, i
                 )
                 seq += residue_letter
             chains[chain.id] = seq
@@ -183,7 +183,7 @@ class PDBProcessor:
         pdb_id: str,
         mutations_per_chain: Dict[str, Set[Tuple[int, str, str]]],
         chain: PDB.Chain,
-        residue: PDB.Residue,
+        index: int,
     ) -> str:
         """Apply mutations to a residue if any.
 
@@ -194,37 +194,67 @@ class PDBProcessor:
             of tuples containing the mutation position, the wild-type amino
             acid, and the mutated amino acid.
             chain (PDB.Chain): The chain object.
-            residue (PDB.Residue): The residue object.
+            index (int): The index of the residue in 'chain.child_list'.
 
         Returns:
             str: The one-letter amino acid code of the residue after applying
-            the mutations. If the residue is already mutated, the mutated amino
-            acid is returned. If no mutations are found for the residue, the
-            one-letter amino acid code of the residue is returned.
+            the mutations. If the WT amino acid at the mutation position is not
+            the expected one an IndexError is raised. If the mutation is
+            already applied, a warning is raised. If no mutations are found for
+            this position, the one-letter amino acid is returned.
         """
-        residue_letter = self.three_letter_aa_to_one(residue.resname)
-        residue_pos = self._get_residue_pos(residue)
-        residue_insertion_code = self._get_residue_insertion_code(residue)
+        current_residue = chain.child_list[index]
+        residue_letter = self.three_letter_aa_to_one(current_residue.resname)
+        residue_pos = self._get_residue_pos(current_residue)
+        residue_insertion_code = self._get_residue_insertion_code(
+            current_residue
+        )
         consumed_mutations = []
         for mutation in mutations_per_chain[chain.id]:
             mut_pos, wt_aa, mut_aa = mutation
             if mut_pos == residue_pos and residue_insertion_code == " ":
                 consumed_mutations.append(mutation)
-                if residue_letter == mut_aa:
-                    # If the residue is already mutated, we don't
-                    # raise an error, but we warn the user just in
-                    # case.
-                    warnings.warn(
-                        f"Mutation {mutation} is already applied "
-                        f"to chain {chain.id} in PDB {pdb_id}"
-                    )
-                elif residue_letter != wt_aa:
-                    raise ValueError(
-                        f"Wild-type amino acid at position {mut_pos} "
-                        f"in chain {chain.id} in PDB {pdb_id} is "
-                        f"{residue_letter}, not {wt_aa} as expected "
-                        f"for mutation {mutation}"
-                    )
+                if residue_letter != wt_aa:
+                    if (
+                        index != len(chain.child_list) - 1
+                        and self.three_letter_aa_to_one(
+                            chain.child_list[index + 1].resname
+                        )
+                        == wt_aa
+                    ):
+                        raise IndexError(
+                            "Mutation Error: Expected WT AA at position "
+                            f"{mut_pos} in chain {chain.id} in PDB {pdb_id} to"
+                            f" be {wt_aa}, but found {residue_letter}. The "
+                            f"next AA is {wt_aa}, this might be an off-by-one "
+                            "error."
+                        )
+                    elif (
+                        index != 0
+                        and self.three_letter_aa_to_one(
+                            chain.child_list[index - 1].resname
+                        )
+                        == wt_aa
+                    ):
+                        raise IndexError(
+                            "Mutation Error: Expected WT AA at position "
+                            f"{mut_pos} in chain {chain.id} in PDB {pdb_id} to"
+                            f" be {wt_aa}, but found {residue_letter}. The "
+                            f"previous AA is {wt_aa}, this might be an off-by-"
+                            "one error."
+                        )
+                    elif residue_letter == mut_aa:
+                        warnings.warn(
+                            f"Mutation of WT AA {wt_aa} to {mut_aa} "
+                            f"at position {mut_pos} in chain {chain.id} in PDB"
+                            f" {pdb_id} is already applied."
+                        )
+                    else:
+                        raise IndexError(
+                            f"Mutation Error: Expected WT AA at position "
+                            f"{mut_pos} in chain {chain.id} in PDB {pdb_id} to"
+                            f" be {wt_aa}, but found {residue_letter}."
+                        )
                 residue_letter = mut_aa
         [mutations_per_chain[chain.id].remove(m) for m in consumed_mutations]
 

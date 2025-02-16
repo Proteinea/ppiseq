@@ -359,7 +359,7 @@ class TestParseSeqsFromPDB(unittest.TestCase):
         self.parser.pdb_parser.get_structure.return_value = [model]
         self.parser.parse_mutation.return_value = ("A", 166, "E", "R")
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(IndexError):
             self.parser.parse_seqs_from_pdb("test", "path", ["A"], ["A_E166R"])
 
     def test_mutation_already_applied_warning(self):
@@ -369,7 +369,7 @@ class TestParseSeqsFromPDB(unittest.TestCase):
         model = MagicMock(spec=Model.Model)
         model.__iter__.return_value = iter([chain])
         self.parser.pdb_parser.get_structure.return_value = [model]
-        self.parser.parse_mutation.return_value = ("A", 166, "A", "A")
+        self.parser.parse_mutation.return_value = ("A", 166, "E", "A")
 
         with self.assertWarns(UserWarning):
             result = self.parser.parse_seqs_from_pdb(
