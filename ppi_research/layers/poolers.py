@@ -9,10 +9,20 @@ def global_mean_pooling1d(
     x: torch.FloatTensor,
     padding_mask: torch.FloatTensor | None = None,
     dim: int = 1,
-):
+) -> torch.FloatTensor:
+    """
+    Global Mean Pooling 1D.
+
+    Args:
+        x: The input tensor.
+        padding_mask: The padding mask.
+        dim: The dimension to pool over.
+
+    Returns:
+        The global mean pooled tensor.
+    """
     if padding_mask is None:
         return torch.mean(x, dim=dim)
-
     padding_mask = padding_mask.to(device=x.device, dtype=torch.long)
     padding_mask = padding_mask.unsqueeze(-1)
     x_masked = x * padding_mask
@@ -24,6 +34,17 @@ def global_max_pooling1d(
     padding_mask: torch.FloatTensor | None = None,
     dim: int = 1,
 ):
+    """
+    Global Max Pooling 1D.
+
+    Args:
+        x: The input tensor.
+        padding_mask: The padding mask.
+        dim: The dimension to pool over.
+
+    Returns:
+        The global max pooled tensor.
+    """
     if padding_mask is None:
         return torch.amax(x, dim=dim)
 
@@ -35,6 +56,9 @@ def global_max_pooling1d(
 
 class GlobalAvgPooling1D(nn.Module):
     def __init__(self, *args, **kwargs):
+        """
+        Global Average Pooling 1D.
+        """
         super().__init__()
 
     def forward(
@@ -48,6 +72,9 @@ class GlobalAvgPooling1D(nn.Module):
 
 class GlobalMaxPooling1D(nn.Module):
     def __init__(self, *args, **kwargs):
+        """
+        Global Max Pooling 1D.
+        """
         super().__init__()
 
     def forward(
@@ -66,9 +93,17 @@ class AttentionPooling1D(nn.Module):
         add_one_to_softmax: bool = False,
         bias: bool = False,
     ):
+        """
+        Attention Pooling 1D.
+
+        Args:
+            embed_dim: The dimension of the embeddings.
+            add_one_to_softmax: Whether to add one to the softmax denominator.
+            bias: Whether to use a bias in the linear layer.
+        """
         super().__init__()
-        self.w_proj = nn.Linear(embed_dim, 1, bias=bias)
         self.add_one_to_softmax = add_one_to_softmax
+        self.w_proj = nn.Linear(embed_dim, 1, bias=bias)
 
     def forward(
         self,
@@ -92,7 +127,14 @@ class AttentionPooling1D(nn.Module):
 
 
 class WeightedAveragePooling1D(nn.Module):
-    def __init__(self, embed_dim: int, bias=False):
+    def __init__(self, embed_dim: int, bias: bool = False):
+        """
+        Weighted Average Pooling 1D.
+
+        Args:
+            embed_dim: The dimension of the embeddings.
+            bias: Whether to use a bias in the linear layer.
+        """
         super().__init__()
         self.w_proj = nn.Linear(embed_dim, 1, bias=bias)
 
@@ -176,8 +218,10 @@ class ChainsPooler(nn.Module):
         return torch.cat(outputs, dim=0)
 
 
-# Chains Poolers should not be included here, given that they are not
-# technically poolers, they are a container that aggregate
+# Chains Poolers should not be
+# included here, given that they are not
+# technically poolers, they are a
+# container that aggregate
 # chains and pools them with an already existing pooler.
 available_poolers = {
     "avg": GlobalAvgPooling1D,
@@ -187,11 +231,13 @@ available_poolers = {
     "mean": GlobalAvgPooling1D,
     "weighted_mean": WeightedAveragePooling1D,
     "attention": AttentionPooling1D,
-
 }
 
 
 def get(identifier, *args, **kwargs):
+    """
+    Get a pooler from the available poolers.
+    """
     if isinstance(identifier, nn.Module):
         return identifier
 

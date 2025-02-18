@@ -5,7 +5,7 @@ defaults:
   - model_configs@prott5: prott5
 
 
-backbone: ankh
+backbone: ankh # for later use.
 dataset_name: "ppb_affinity"
 pooler: avg
 

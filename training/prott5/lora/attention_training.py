@@ -1,5 +1,6 @@
 import os
-import functools
+from functools import partial
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -100,7 +101,7 @@ def main(cfg: DictConfig):
             tokenizer=tokenizer,
             model_name="prott5",
             max_length=max_length,
-            labels_preprocessing_function=functools.partial(
+            labels_preprocessing_function=partial(
                 log_transform_labels,
                 base=cfg.label_transform_config.log_base,
                 eps=cfg.label_transform_config.eps,

@@ -1,5 +1,6 @@
 import os
-import functools
+from functools import partial
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 # os.environ['WANDB_MODE'] = 'disabled'
@@ -10,9 +11,6 @@ from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import SequenceConcatConvBERTModel
 from ppi_research.utils import create_run_name
-from ppi_research.utils import esm_checkpoint_mapping
-from ppi_research.utils import esm_checkpoints
-from ppi_research.utils import parse_common_args
 from ppi_research.utils import set_seed
 from transformers import AutoModel
 from transformers import AutoTokenizer
@@ -88,7 +86,7 @@ def main(cfg: DictConfig):
             tokenizer=tokenizer,
             model_name="esm",
             max_length=max_length,
-            labels_preprocessing_function=functools.partial(
+            labels_preprocessing_function=partial(
                 log_transform_labels,
                 base=cfg.label_transform_config.log_base,
                 eps=cfg.label_transform_config.eps,
@@ -103,6 +101,4 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
-    args = parse_common_args(checkpoints=esm_checkpoints())
-    args.ckpt = esm_checkpoint_mapping(args.ckpt)
-    main(args)
+    main()
