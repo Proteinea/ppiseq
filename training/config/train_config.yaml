@@ -27,6 +27,10 @@ multichain_config:
   use_ffn: true
   bias: false
   aggregation_method: concat
+  shared_global_pooler: false
+  shared_chains_pooler: false
+  shared_convbert: true
+
 
 attn_pool_add_config:
   shared_attn: true
