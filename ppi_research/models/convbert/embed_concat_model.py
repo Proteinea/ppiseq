@@ -36,7 +36,7 @@ class EmbedConcatConvBERTModel(nn.Module):
         # our benchmarking so we just use `ConvBertLayer`.
         self.convbert_layer = convbert.ConvBertLayer(convbert_config)
         hidden_dim = (
-            self.embed_dim * 2 if self.concat_first else self.embed_dim
+            self.embed_dim if self.concat_first else self.embed_dim * 2
         )
 
         self.output = nn.Sequential(
