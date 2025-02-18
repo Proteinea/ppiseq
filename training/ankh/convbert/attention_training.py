@@ -22,7 +22,7 @@ from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 
 @hydra.main(
-    config_path="config",
+    config_path="../../config",
     config_name="train_config",
     version_base=None,
 )
