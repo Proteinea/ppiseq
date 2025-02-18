@@ -40,7 +40,7 @@ def main(cfg: DictConfig):
         backbone=model,
         pooler=cfg.pooler,
         shared_convbert=cfg.attn_pool_add_config.shared_convbert,
-        shared_attn=cfg.attn_pool_add_config.shared_attn,
+        shared_attention=cfg.attn_pool_add_config.shared_attn,
         model_name="ankh",
         embedding_name="last_hidden_state",
     )
