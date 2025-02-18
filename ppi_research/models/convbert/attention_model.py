@@ -119,10 +119,10 @@ class AttnPoolAddConvBERTModel(nn.Module):
                 need_weights=False,
             )
             output_2, _ = self.attn(
-                query=ligand_embed,
-                key=receptor_embed,
-                value=receptor_embed,
-                key_padding_mask=receptor_attention_mask.log(),
+                query=receptor_embed,
+                key=ligand_embed,
+                value=ligand_embed,
+                key_padding_mask=ligand_attention_mask.log(),
                 need_weights=False,
             )
         else:
