@@ -268,7 +268,7 @@ class MultiChainConvBERTModel(nn.Module):
                 if self.shared_chains_pooler
                 else self.ligand_chains_pooler
             )
-            ligand_pooled_chains = self.process_chains_v2(
+            ligand_pooled_chains = self.process_chains(
                 ligand_pooled,
                 ligand_chain_ids,
                 ligand_chains_pooler,
@@ -282,7 +282,7 @@ class MultiChainConvBERTModel(nn.Module):
                 if self.shared_chains_pooler
                 else self.receptor_chains_pooler
             )
-            receptor_pooled_chains = self.process_chains_v2(
+            receptor_pooled_chains = self.process_chains(
                 receptor_pooled,
                 receptor_chain_ids,
                 receptor_chains_pooler,

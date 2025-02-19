@@ -137,7 +137,7 @@ class MultiChainModel(nn.Module):
         chain_ids: torch.LongTensor,
         pooler: nn.Module,
     ) -> torch.FloatTensor:
-        """DEPRECATED: Non-vectorized implementation of the chains pooling.
+        """Non-vectorized implementation of the chains pooling.
 
         Args:
             protein_embed (torch.FloatTensor): The protein embeddings.
@@ -218,14 +218,25 @@ class MultiChainModel(nn.Module):
             receptor_attention_mask,
         )
 
+        ligand_pooler = (
+            self.global_pooler
+            if self.shared_global_pooler
+            else self.ligand_global_pooler
+        )
+        receptor_pooler = (
+            self.global_pooler
+            if self.shared_global_pooler
+            else self.receptor_global_pooler
+        )
+
         # Pool the embeddings
-        ligand_pooled = self.ligand_global_pooler(
+        ligand_pooled = ligand_pooler(
             ligand_embed,
             ligand_attention_mask,
             dim=1,
         )
 
-        receptor_pooled = self.receptor_global_pooler(
+        receptor_pooled = receptor_pooler(
             receptor_embed,
             receptor_attention_mask,
             dim=1,
@@ -233,21 +244,30 @@ class MultiChainModel(nn.Module):
 
         # Process the chains
         if ligand_chain_ids is not None:
-            ligand_pooled_chains = self.process_chains_v2(
+            ligand_chains_pooler = (
+                self.chains_pooler
+                if self.shared_chains_pooler
+                else self.ligand_chains_pooler
+            )
+            ligand_pooled_chains = self.process_chains(
                 protein_embed=ligand_pooled,
                 chain_ids=ligand_chain_ids,
-                pooler=self.ligand_chains_pooler,
+                pooler=ligand_chains_pooler,
             )
         else:
             ligand_pooled_chains = ligand_pooled
 
         if receptor_chain_ids is not None:
-            receptor_pooled_chains = self.process_chains_v2(
+            receptor_chains_pooler = (
+                self.chains_pooler
+                if self.shared_chains_pooler
+                else self.receptor_chains_pooler
+            )
+            receptor_pooled_chains = self.process_chains(
                 protein_embed=receptor_pooled,
                 chain_ids=receptor_chain_ids,
-                pooler=self.receptor_chains_pooler,
+                pooler=receptor_chains_pooler,
             )
-
         else:
             receptor_pooled_chains = receptor_pooled
 
