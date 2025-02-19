@@ -36,6 +36,7 @@ class PerceiverModel(nn.Module):
             trainable=True,
         )
         self.pooler = poolers.get(pooler, self.embed_dim)
+        self.shared_perceiver = shared_perceiver
 
         if shared_perceiver:
             self.perceiver = Perceiver(
@@ -97,17 +98,17 @@ class PerceiverModel(nn.Module):
         )
         if self.shared_perceiver:
             output_1 = self.perceiver(
-                inputs=ligand_embed, attention_mask=ligand_attention_mask
+                embeddings=ligand_embed, mask=ligand_attention_mask
             )
             output_2 = self.perceiver(
-                inputs=receptor_embed, attention_mask=receptor_attention_mask
+                embeddings=receptor_embed, mask=receptor_attention_mask
             )
         else:
             output_1 = self.ligand_perceiver(
-                inputs=ligand_embed, attention_mask=ligand_attention_mask
+                embeddings=ligand_embed, mask=ligand_attention_mask
             )
             output_2 = self.receptor_perceiver(
-                inputs=receptor_embed, attention_mask=receptor_attention_mask
+                embeddings=receptor_embed, mask=receptor_attention_mask
             )
         output = output_1 + output_2
         pooled_output = self.pooler(output)

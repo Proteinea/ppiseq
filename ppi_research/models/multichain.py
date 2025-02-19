@@ -124,11 +124,7 @@ class MultiChainModel(nn.Module):
         # Apply masks and pool
         # masked_embeds = expanded_embed * masks.unsqueeze(-1)
 
-        pooled_chains = pooler(
-            expanded_embed,
-            masks.to(dtype=torch.long),
-            dim=1,
-        )
+        pooled_chains = pooler(expanded_embed, masks)
         return pooled_chains
 
     def process_chains(
@@ -148,16 +144,10 @@ class MultiChainModel(nn.Module):
             torch.FloatTensor: The pooled chains.
         """
         outputs = []
-        for chain_id in torch.unique(chain_ids):
+        unique_chain_ids = torch.unique(chain_ids)
+        for chain_id in unique_chain_ids:
             mask = chain_ids == chain_id
-            protein_embed_masked = protein_embed[mask, ...]
-            pooled_chains = pooler(
-                protein_embed_masked,
-                dim=0,
-            )
-
-            # .unsqueeze(0) to add a batch dimension.
-            outputs.append(pooled_chains.unsqueeze(0))
+            outputs.append(pooler(protein_embed[None, mask, ...]))
         return torch.cat(outputs, dim=0)
 
     def compute_loss(
@@ -233,13 +223,11 @@ class MultiChainModel(nn.Module):
         ligand_pooled = ligand_pooler(
             ligand_embed,
             ligand_attention_mask,
-            dim=1,
         )
 
         receptor_pooled = receptor_pooler(
             receptor_embed,
             receptor_attention_mask,
-            dim=1,
         )
 
         # Process the chains

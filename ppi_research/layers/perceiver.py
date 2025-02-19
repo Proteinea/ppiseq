@@ -42,10 +42,9 @@ class SelfAttentionAndFeedForward(nn.Module):
     def forward(
         self,
         latents: torch.FloatTensor,
-        mask: torch.LongTensor | None = None,
     ):
         latents = self.self_attn_pre_norm(latents)
-        latents = self.self_attn(latents, latents, mask) + latents
+        latents = self.self_attn(latents, latents, None) + latents
         latents = self.self_ffn_pre_norm(latents)
         latents = self.self_ffn(latents) + latents
         return latents
@@ -149,7 +148,7 @@ class PerceiverLayer(nn.Module):
             mask=mask,
         )
         for self_layer in self.self_layers:
-            latents = self_layer(latents=latents, mask=mask)
+            latents = self_layer(latents)
         return latents
 
 

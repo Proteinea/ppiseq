@@ -3,7 +3,7 @@ import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ['WANDB_MODE'] = 'disabled'
+os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 from ppi_research import data_adapters
@@ -24,7 +24,7 @@ from peft import get_peft_model
 
 
 @hydra.main(
-    config_path="config",
+    config_path="../../config",
     config_name="train_config",
     version_base=None,
 )
@@ -63,7 +63,7 @@ def main(cfg: DictConfig):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="convbert_multichain",
+        setup="lora_multichain",
         seed=seed,
         aggregation_method=cfg.multichain_config.aggregation_method,
         use_ffn=cfg.multichain_config.use_ffn,

@@ -25,7 +25,7 @@ class EmbedConcatModel(nn.Module):
         )
         self.pooler = poolers.get(pooler, self.embed_dim)
         hidden_dim = (
-            self.embed_dim * 2 if self.concat_first else self.embed_dim
+            self.embed_dim if self.concat_first else self.embed_dim * 2
         )
         self.output = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -61,15 +61,15 @@ class EmbedConcatModel(nn.Module):
             concat_attn_mask = torch.cat(
                 [ligand_attention_mask, receptor_attention_mask], dim=1
             )
-            concat_embed = self.pooler(concat_embed, concat_attn_mask)
+            pooled_embed = self.pooler(concat_embed, concat_attn_mask)
         else:
             pooled_ligand = self.pooler(ligand_embed, ligand_attention_mask)
             pooled_receptor = self.pooler(
                 receptor_embed, receptor_attention_mask
             )
-            pooled_output = torch.cat([pooled_ligand, pooled_receptor], dim=1)
+            pooled_embed = torch.cat([pooled_ligand, pooled_receptor], dim=1)
 
-        logits = self.output(pooled_output)
+        logits = self.output(pooled_embed)
 
         loss = None
         if labels is not None:

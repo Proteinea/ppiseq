@@ -3,7 +3,7 @@ from functools import partial
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ['WANDB_MODE'] = 'disabled'
+os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
@@ -23,7 +23,7 @@ from omegaconf import DictConfig
 
 
 @hydra.main(
-    config_path="config", config_name="train_config", version_base=None
+    config_path="../../config", config_name="train_config", version_base=None
 )
 def main(cfg: DictConfig):
     ckpt = cfg.ankh.ckpt
@@ -63,8 +63,8 @@ def main(cfg: DictConfig):
         do_eval=True,
         eval_strategy=cfg.train_config.eval_strategy,
         gradient_accumulation_steps=cfg.train_config.gradient_accumulation_steps,  # noqa
-        fp16=cfg.train_config.fp16,
-        fp16_opt_level=cfg.train_config.fp16_opt_level,
+        fp16=False,
+        fp16_opt_level="02",
         seed=seed,
         load_best_model_at_end=True,
         save_total_limit=cfg.train_config.save_total_limit,

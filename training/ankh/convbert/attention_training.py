@@ -3,7 +3,7 @@ from functools import partial
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ['WANDB_MODE'] = 'disabled'
+os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 from ppi_research import data_adapters
@@ -40,7 +40,7 @@ def main(cfg: DictConfig):
         backbone=model,
         pooler=cfg.pooler,
         shared_convbert=cfg.attn_pool_add_config.shared_convbert,
-        shared_attention=cfg.attn_pool_add_config.shared_attn,
+        shared_attention=cfg.attn_pool_add_config.shared_attention,
         model_name="ankh",
         embedding_name="last_hidden_state",
     )
@@ -51,7 +51,7 @@ def main(cfg: DictConfig):
         pooler=cfg.pooler,
         seed=seed,
         shared_convbert=cfg.attn_pool_add_config.shared_convbert,
-        shared_attn=cfg.attn_pool_add_config.shared_attn,
+        shared_attn=cfg.attn_pool_add_config.shared_attention,
     )
 
     training_args = TrainingArguments(

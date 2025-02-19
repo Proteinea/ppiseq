@@ -33,7 +33,7 @@ multichain_config:
 
 
 attn_pool_add_config:
-  shared_attn: true
+  shared_attention: true
   shared_convbert: true
 
 embed_concat_config:
@@ -67,3 +67,4 @@ train_config:
   seed: 7
   remove_unused_columns: false
   save_safetensors: false
+  load_best_model_at_end: true

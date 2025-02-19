@@ -3,7 +3,7 @@ from functools import partial
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ['WANDB_MODE'] = 'disabled'
+os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
@@ -25,7 +25,7 @@ from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 
 @hydra.main(
-    config_path="config",
+    config_path="../../config",
     config_name="train_config",
     version_base=None,
 )
@@ -44,6 +44,7 @@ def main(cfg: DictConfig):
         lora_dropout=cfg.lora_config.dropout,
         bias=cfg.lora_config.bias,
         target_modules=cfg.ankh.target_modules,
+        use_dora=cfg.lora_config.use_dora,
     )
     model = get_peft_model(model, lora_config).encoder
 

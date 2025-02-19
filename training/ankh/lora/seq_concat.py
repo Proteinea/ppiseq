@@ -3,7 +3,7 @@ from functools import partial
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ['WANDB_MODE'] = 'disabled'
+os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 from peft import LoraConfig
@@ -12,10 +12,7 @@ from ppi_research.data_adapters import ppi_datasets
 from ppi_research.data_adapters.collators import SequenceConcatCollator
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import SequenceConcatModel
-from ppi_research.utils import ankh_checkpoint_mapping
-from ppi_research.utils import ankh_checkpoints
 from ppi_research.utils import create_run_name
-from ppi_research.utils import parse_common_args
 from ppi_research.utils import set_seed
 from transformers import AutoTokenizer
 from transformers import T5ForConditionalGeneration
@@ -27,7 +24,7 @@ from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 
 @hydra.main(
-    config_path="config",
+    config_path="../../config",
     config_name="train_config",
     version_base=None,
 )
@@ -119,6 +116,4 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
-    args = parse_common_args(checkpoints=ankh_checkpoints())
-    args.ckpt = ankh_checkpoint_mapping(args.ckpt)
-    main(args)
+    main()
