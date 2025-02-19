@@ -1,7 +1,6 @@
-ckpt: "facebook/esm2_t36_3B_UR50S"
+ckpt: facebook/esm2_t33_650M_UR50D
 max_length: 1024
 
 target_modules:
-  - "query"
-  - "value"
-
+  - query
+  - value

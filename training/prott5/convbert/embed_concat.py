@@ -11,9 +11,6 @@ from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import EmbedConcatConvBERTModel
 from ppi_research.utils import create_run_name
-from ppi_research.utils import parse_common_args
-from ppi_research.utils import prott5_checkpoint_mapping
-from ppi_research.utils import prott5_checkpoints
 from ppi_research.utils import set_seed
 from transformers import T5EncoderModel
 from transformers import T5Tokenizer
@@ -106,6 +103,4 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
-    args = parse_common_args(checkpoints=prott5_checkpoints())
-    args.ckpt = prott5_checkpoint_mapping(args.ckpt)
-    main(args)
+    main()

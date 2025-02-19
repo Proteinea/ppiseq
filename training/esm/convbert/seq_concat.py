@@ -64,8 +64,8 @@ def main(cfg: DictConfig):
         do_eval=True,
         eval_strategy=cfg.train_config.eval_strategy,
         gradient_accumulation_steps=cfg.train_config.gradient_accumulation_steps,  # noqa
-        fp16=cfg.train_config.fp16,
-        fp16_opt_level=cfg.train_config.fp16_opt_level,
+        fp16=False,
+        fp16_opt_level="O2",
         seed=seed,
         load_best_model_at_end=cfg.train_config.load_best_model_at_end,
         save_total_limit=cfg.train_config.save_total_limit,

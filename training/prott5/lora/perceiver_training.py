@@ -13,9 +13,6 @@ from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import PerceiverModel
 from ppi_research.utils import create_run_name
-from ppi_research.utils import parse_common_args
-from ppi_research.utils import prott5_checkpoint_mapping
-from ppi_research.utils import prott5_checkpoints
 from ppi_research.utils import set_seed
 from transformers import T5ForConditionalGeneration
 from transformers import T5Tokenizer
@@ -35,7 +32,7 @@ set_seed(seed=seed)
     version_base=None,
 )
 def main(cfg: DictConfig):
-    ckpt = cfg.ckpt
+    ckpt = cfg.prott5.ckpt
     max_length = cfg.prott5.max_length
     print("Checkpoint:", ckpt)
 
@@ -130,6 +127,4 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
-    args = parse_common_args(checkpoints=prott5_checkpoints())
-    args.ckpt = prott5_checkpoint_mapping(args.ckpt)
-    main(args)
+    main()

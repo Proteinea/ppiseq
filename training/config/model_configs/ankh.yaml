@@ -3,5 +3,5 @@ max_length: 1024
 
 
 target_modules:
-  - "q"
-  - "v"
+  - q
+  - v

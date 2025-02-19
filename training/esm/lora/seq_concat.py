@@ -48,7 +48,7 @@ def main(cfg: DictConfig):
 
     model = get_peft_model(model, lora_config)
     pooler = poolers.get(
-        cfg.downstream_config.pooler,
+        cfg.pooler,
         embed_dim=model.config.hidden_size,
     )
     downstream_model = SequenceConcatModel(
@@ -64,7 +64,7 @@ def main(cfg: DictConfig):
         r=cfg.lora_config.r,
         alpha=cfg.lora_config.alpha,
         target_modules=cfg.esm.target_modules,
-        pooler=cfg.downstream_config.pooler,
+        pooler=cfg.pooler,
         seed=seed,
     )
 
