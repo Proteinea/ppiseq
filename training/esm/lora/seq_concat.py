@@ -4,7 +4,7 @@ from ppi_research.layers import poolers
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ['WANDB_MODE'] = 'disabled'
+os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
@@ -26,7 +26,7 @@ from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 
 @hydra.main(
-    config_path="config",
+    config_path="../../config",
     config_name="train_config",
     version_base=None,
 )

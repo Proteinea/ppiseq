@@ -3,7 +3,7 @@ from functools import partial
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ['WANDB_MODE'] = 'disabled'
+os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
@@ -25,7 +25,7 @@ from ppi_research.data_adapters.preprocessing import log_transform_labels
 
 
 @hydra.main(
-    config_path="config",
+    config_path="../../config",
     config_name="train_config",
     version_base=None,
 )
@@ -50,6 +50,7 @@ def main(cfg: DictConfig):
     downstream_model = AttnPoolAddModel(
         backbone=model,
         pooler=cfg.pooler,
+        shared_attention=cfg.attn_pool_add_config.shared_attention,
         model_name="prott5",
         embedding_name="last_hidden_state",
     )
@@ -62,6 +63,7 @@ def main(cfg: DictConfig):
         target_modules=cfg.prott5.target_modules,
         pooler=cfg.pooler,
         seed=seed,
+        shared_attention=cfg.attn_pool_add_config.shared_attention,
     )
 
     training_args = TrainingArguments(

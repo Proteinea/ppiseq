@@ -3,7 +3,7 @@ from functools import partial
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ['WANDB_MODE'] = 'disabled'
+os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 from peft import LoraConfig
@@ -29,7 +29,11 @@ seed = 7
 set_seed(seed=seed)
 
 
-@hydra.main(config_path="config", config_name="config.yaml")
+@hydra.main(
+    config_path="../../config",
+    config_name="train_config",
+    version_base=None,
+)
 def main(cfg: DictConfig):
     ckpt = cfg.ckpt
     max_length = cfg.prott5.max_length
@@ -55,6 +59,7 @@ def main(cfg: DictConfig):
         num_latents=cfg.perceiver_config.num_latents,
         num_heads=cfg.perceiver_config.num_heads,
         hidden_dim=cfg.perceiver_config.hidden_dim,
+        bias=cfg.perceiver_config.bias,
         num_perceiver_layers=cfg.perceiver_config.num_perceiver_layers,
         num_self_layers=cfg.perceiver_config.num_self_layers,
         activation=cfg.perceiver_config.activation,
