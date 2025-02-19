@@ -21,19 +21,22 @@ class MultiChainModel(nn.Module):
     def __init__(
         self,
         backbone: nn.Module,
-        ligand_global_pooler: nn.Module | str,
-        receptor_global_pooler: nn.Module | str,
-        ligand_chains_pooler: nn.Module | str,
-        receptor_chains_pooler: nn.Module | str,
-        model_name: str | None = None,
-        embedding_name: str | None = None,
+        global_pooler: nn.Module | str,
+        chains_pooler: nn.Module | str,
+        shared_global_pooler: bool = False,
+        shared_chains_pooler: bool = False,
         aggregation_method: str = "concat",
         use_ffn: bool = False,
         bias: bool = False,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
     ):
         super().__init__()
+
         self.embed_dim = backbone.config.hidden_size
         self.use_ffn = use_ffn
+        self.shared_global_pooler = shared_global_pooler
+        self.shared_chains_pooler = shared_chains_pooler
         self.aggregation_method = aggregation_method
         input_dim = (
             self.embed_dim * 2
@@ -41,18 +44,29 @@ class MultiChainModel(nn.Module):
             else self.embed_dim
         )
 
-        self.ligand_global_pooler = poolers.get(
-            ligand_global_pooler, self.embed_dim
-        )
-        self.receptor_global_pooler = poolers.get(
-            receptor_global_pooler, self.embed_dim
-        )
-        self.ligand_chains_pooler = poolers.get(
-            ligand_chains_pooler, self.embed_dim
-        )
-        self.receptor_chains_pooler = poolers.get(
-            receptor_chains_pooler, self.embed_dim
-        )
+        if self.shared_global_pooler:
+            self.global_pooler = poolers.get(
+                global_pooler, self.embed_dim
+            )
+        else:
+            self.ligand_global_pooler = poolers.get(
+                global_pooler, self.embed_dim
+            )
+            self.receptor_global_pooler = poolers.get(
+                global_pooler, self.embed_dim
+            )
+
+        if self.shared_chains_pooler:
+            self.chains_pooler = poolers.get(
+                chains_pooler, self.embed_dim
+            )
+        else:
+            self.ligand_chains_pooler = poolers.get(
+                chains_pooler, self.embed_dim
+            )
+            self.receptor_chains_pooler = poolers.get(
+                chains_pooler, self.embed_dim
+            )
 
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,

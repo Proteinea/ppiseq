@@ -32,9 +32,9 @@ def prott5_sequence_preprocessing(
     sequences: typing.List[str] | str,
 ) -> typing.List[str] | str:
     if isinstance(sequences, str):
-        return list(re.sub(r"[UZOB]", "X", sequences))
+        return re.sub(r"[UZOB]", "X", sequences)
 
-    output = [list(re.sub(r"[UZOB]", "X", seq)) for seq in sequences]
+    output = [re.sub(r"[UZOB]", "X", seq) for seq in sequences]
     return output
 
 
@@ -60,9 +60,24 @@ def multi_chain_preprocessing(
     return output_seq
 
 
-def convert_string_sequences_to_list(
+def split_string_sequences_to_list(
     sequences: str | typing.List[str],
-) -> typing.List[str] | typing.List[typing.List[str]]:
+) -> typing.Tuple[typing.List[str] | typing.List[typing.List[str]], int]:
+    """Convert a string or a list of strings to
+    a list of lists and return the number of chains.
+
+    Args:
+        sequences (str | typing.List[str]): The sequences to convert.
+
+    Returns:
+        typing.Tuple[typing.List[str] | typing.List[typing.List[str]], int]:
+        The converted sequences and the number of chains.
+    """
     if isinstance(sequences, str):
-        return list(sequences)
-    return [list(seq) for seq in sequences]
+        # wrapping this list of characters
+        # in another list to make the output
+        # of multi chain and single chain
+        # consistent (both of them returns a list of lists)
+        return [list(sequences)], 1
+    output = [list(seq) for seq in sequences]
+    return output, len(output)

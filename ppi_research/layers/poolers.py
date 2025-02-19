@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import torch
 from torch import nn
-from ppi_research.layers.attention import softmax as softmax_fn
 
 
 def global_mean_pooling1d(
     x: torch.FloatTensor,
     padding_mask: torch.FloatTensor | None = None,
-    dim: int = 1,
 ) -> torch.FloatTensor:
     """
     Global Mean Pooling 1D.
@@ -22,17 +20,16 @@ def global_mean_pooling1d(
         The global mean pooled tensor.
     """
     if padding_mask is None:
-        return torch.mean(x, dim=dim)
-    padding_mask = padding_mask.to(device=x.device, dtype=torch.long)
+        return torch.mean(x, dim=1)
+    padding_mask = padding_mask.to(device=x.device, dtype=x.dtype)
     padding_mask = padding_mask.unsqueeze(-1)
     x_masked = x * padding_mask
-    return x_masked.sum(dim=dim) / padding_mask.sum(dim=dim)
+    return x_masked.sum(dim=1) / padding_mask.sum(dim=1)
 
 
 def global_max_pooling1d(
     x: torch.FloatTensor,
     padding_mask: torch.FloatTensor | None = None,
-    dim: int = 1,
 ):
     """
     Global Max Pooling 1D.
@@ -46,12 +43,12 @@ def global_max_pooling1d(
         The global max pooled tensor.
     """
     if padding_mask is None:
-        return torch.amax(x, dim=dim)
+        return torch.amax(x, dim=1)
 
     padding_mask = padding_mask.to(device=x.device, dtype=torch.long)
     padding_mask = padding_mask.unsqueeze(-1)
     x = x.masked_fill(padding_mask.logical_not(), -torch.inf)
-    return torch.amax(x, dim=dim)
+    return torch.amax(x, dim=1)
 
 
 class GlobalAvgPooling1D(nn.Module):
@@ -65,9 +62,8 @@ class GlobalAvgPooling1D(nn.Module):
         self,
         x: torch.FloatTensor,
         padding_mask: torch.FloatTensor | None = None,
-        dim: int = 1,
     ):
-        return global_mean_pooling1d(x=x, padding_mask=padding_mask, dim=dim)
+        return global_mean_pooling1d(x=x, padding_mask=padding_mask)
 
 
 class GlobalMaxPooling1D(nn.Module):
@@ -81,16 +77,14 @@ class GlobalMaxPooling1D(nn.Module):
         self,
         x: torch.FloatTensor,
         padding_mask: torch.FloatTensor | None = None,
-        dim: int = 1,
     ):
-        return global_max_pooling1d(x=x, padding_mask=padding_mask, dim=dim)
+        return global_max_pooling1d(x=x, padding_mask=padding_mask)
 
 
 class AttentionPooling1D(nn.Module):
     def __init__(
         self,
         embed_dim: int,
-        add_one_to_softmax: bool = False,
         bias: bool = False,
     ):
         """
@@ -98,32 +92,24 @@ class AttentionPooling1D(nn.Module):
 
         Args:
             embed_dim: The dimension of the embeddings.
-            add_one_to_softmax: Whether to add one to the softmax denominator.
             bias: Whether to use a bias in the linear layer.
         """
         super().__init__()
-        self.add_one_to_softmax = add_one_to_softmax
         self.w_proj = nn.Linear(embed_dim, 1, bias=bias)
 
     def forward(
         self,
         x: torch.FloatTensor,
         padding_mask: torch.FloatTensor | None = None,
-        dim: int = 1,
     ):
         outputs = self.w_proj(x).squeeze(-1)
 
         if padding_mask is not None:
-            padding_mask = padding_mask.to(device=x.device, dtype=torch.long)
-            outputs = outputs.masked_fill(
-                padding_mask.logical_not(), -torch.inf
-            )
+            padding_mask = padding_mask.to(device=x.device, dtype=x.dtype)
+            outputs = outputs + padding_mask.log()
 
-        if self.add_one_to_softmax:
-            probs = softmax_fn(outputs, dim=-1)
-        else:
-            probs = nn.functional.softmax(outputs, dim=-1)
-        return torch.sum(x * probs.unsqueeze(-1), dim=dim)
+        probs = nn.functional.softmax(outputs, dim=-1)
+        return torch.sum(x * probs.unsqueeze(-1), dim=1)
 
 
 class WeightedAveragePooling1D(nn.Module):
@@ -142,87 +128,19 @@ class WeightedAveragePooling1D(nn.Module):
         self,
         x: torch.FloatTensor,
         padding_mask: torch.FloatTensor | None = None,
-        dim: int = 1,
     ):
         outputs = self.w_proj(x).squeeze(-1)
+        if padding_mask is None:
+            gates = nn.functional.sigmoid(outputs)
+            return torch.mean(x * gates.unsqueeze(-1), dim=1)
 
-        if padding_mask is not None:
-            padding_mask = padding_mask.to(device=x.device, dtype=torch.long)
-            outputs = outputs.masked_fill(
-                padding_mask.logical_not(), -torch.inf
-            )
-
+        padding_mask = padding_mask.to(device=x.device, dtype=x.dtype)
+        outputs = outputs + padding_mask.log()
         gates = nn.functional.sigmoid(outputs)
-        return torch.mean(x * gates.unsqueeze(-1), dim=dim)
+        padding_mask = padding_mask.unsqueeze(-1)
+        return (x * gates.unsqueeze(-1)).sum(dim=1) / padding_mask.sum(dim=1)
 
 
-class ChainsPoolerV2(nn.Module):
-    def __init__(self, pooler: nn.Module):
-        super().__init__()
-        self.pooler = pooler
-
-    def forward(
-        self,
-        protein_embed: torch.FloatTensor,
-        chain_ids: torch.LongTensor,
-    ) -> torch.FloatTensor:
-        # Vectorized implementation
-        unique_chains = torch.unique(chain_ids)
-
-        # Create a mask of shape [num_unique_chains, batch_size]
-        masks = torch.stack(
-            [
-                (chain_ids == chain_id)
-                for chain_id in unique_chains
-            ],
-        )
-
-        # Expand protein_embed for broadcasting
-        expanded_embed = protein_embed.unsqueeze(0).expand(
-            len(unique_chains),
-            -1,
-            -1,
-        )
-
-        # Apply masks and pool
-        # masked_embeds = expanded_embed * masks.unsqueeze(-1)
-
-        pooled_chains = self.pooler(
-            expanded_embed,
-            masks.to(dtype=torch.long),
-            dim=1,
-        )
-        return pooled_chains
-
-
-class ChainsPooler(nn.Module):
-    def __init__(self, pooler: nn.Module):
-        super().__init__()
-        self.pooler = pooler
-
-    def forward(
-        self,
-        protein_embed: torch.FloatTensor,
-        chain_ids: torch.LongTensor,
-    ) -> torch.FloatTensor:
-        outputs = []
-        for chain_id in torch.unique(chain_ids):
-            mask = chain_ids == chain_id
-            protein_embed_masked = protein_embed[mask, ...]
-            pooled_chains = self.pooler(
-                protein_embed_masked, dim=0,
-            )
-
-            # .unsqueeze(0) to add a batch dimension.
-            outputs.append(pooled_chains.unsqueeze(0))
-        return torch.cat(outputs, dim=0)
-
-
-# Chains Poolers should not be
-# included here, given that they are not
-# technically poolers, they are a
-# container that aggregate
-# chains and pools them with an already existing pooler.
 available_poolers = {
     "avg": GlobalAvgPooling1D,
     "max": GlobalMaxPooling1D,

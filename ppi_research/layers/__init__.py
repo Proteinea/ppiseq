@@ -1,8 +1,6 @@
 from ppi_research.layers.poolers import (
     GlobalAvgPooling1D,
     GlobalMaxPooling1D,
-    ChainsPoolerV2,
-    ChainsPooler,
     AttentionPooling1D,
     WeightedAveragePooling1D,
 )

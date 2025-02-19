@@ -18,6 +18,12 @@ def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
         raise ValueError(f"Invalid aggregation method: {aggregation_method}")
 
 
+def report(x, y):
+    allc = torch.allclose(x, y)
+    allt = torch.all(x == y).item()
+    return allc, allt
+
+
 class MultiChainConvBERTModel(nn.Module):
     def __init__(
         self,
@@ -141,14 +147,7 @@ class MultiChainConvBERTModel(nn.Module):
             -1,
         )
 
-        # Apply masks and pool
-        # masked_embeds = expanded_embed * masks.unsqueeze(-1)
-
-        pooled_chains = pooler(
-            expanded_embed,
-            masks.to(dtype=torch.long),
-            dim=1,
-        )
+        pooled_chains = pooler(expanded_embed, masks)
         return pooled_chains
 
     def process_chains(
@@ -157,7 +156,7 @@ class MultiChainConvBERTModel(nn.Module):
         chain_ids: torch.LongTensor,
         pooler: nn.Module,
     ) -> torch.FloatTensor:
-        """DEPRECATED: Non-vectorized implementation of the chains pooling.
+        """Non-vectorized implementation of the chains pooling.
 
         Args:
             protein_embed (torch.FloatTensor): The protein embeddings.
@@ -168,16 +167,10 @@ class MultiChainConvBERTModel(nn.Module):
             torch.FloatTensor: The pooled chains.
         """
         outputs = []
-        for chain_id in torch.unique(chain_ids):
+        unique_chain_ids = torch.unique(chain_ids)
+        for chain_id in unique_chain_ids:
             mask = chain_ids == chain_id
-            protein_embed_masked = protein_embed[mask, ...]
-            pooled_chains = pooler(
-                protein_embed_masked,
-                dim=0,
-            )
-
-            # .unsqueeze(0) to add a batch dimension.
-            outputs.append(pooled_chains.unsqueeze(0))
+            outputs.append(pooler(protein_embed[None, mask, ...]))
         return torch.cat(outputs, dim=0)
 
     def compute_loss(
@@ -261,13 +254,11 @@ class MultiChainConvBERTModel(nn.Module):
         ligand_pooled = ligand_pooler(
             ligand_embed,
             ligand_attention_mask,
-            dim=1,
         )
 
         receptor_pooled = receptor_pooler(
             receptor_embed,
             receptor_attention_mask,
-            dim=1,
         )
 
         # Process the chains
@@ -278,9 +269,9 @@ class MultiChainConvBERTModel(nn.Module):
                 else self.ligand_chains_pooler
             )
             ligand_pooled_chains = self.process_chains_v2(
-                protein_embed=ligand_pooled,
-                chain_ids=ligand_chain_ids,
-                pooler=ligand_chains_pooler,
+                ligand_pooled,
+                ligand_chain_ids,
+                ligand_chains_pooler,
             )
         else:
             ligand_pooled_chains = ligand_pooled
@@ -292,9 +283,9 @@ class MultiChainConvBERTModel(nn.Module):
                 else self.receptor_chains_pooler
             )
             receptor_pooled_chains = self.process_chains_v2(
-                protein_embed=receptor_pooled,
-                chain_ids=receptor_chain_ids,
-                pooler=receptor_chains_pooler,
+                receptor_pooled,
+                receptor_chain_ids,
+                receptor_chains_pooler,
             )
         else:
             receptor_pooled_chains = receptor_pooled

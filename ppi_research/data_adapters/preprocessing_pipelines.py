@@ -53,6 +53,10 @@ class SequencePairPreprocessingPipeline:
         )
         ligands = preprocessing.prott5_sequence_preprocessing(ligands)
         receptors = preprocessing.prott5_sequence_preprocessing(receptors)
+
+        ligands, _ = preprocessing.split_string_to_list(ligands)
+        receptors, _ = preprocessing.split_string_to_list(receptors)
+
         ligands, receptors = add_sep_tokens_between_chains(
             ligands, receptors, sep_token=self._suffix, merge_chains=True
         )
@@ -66,8 +70,9 @@ class SequencePairPreprocessingPipeline:
         ligands, receptors = preprocess_multi_chain_sequences(
             ligands, receptors
         )
-        ligands = preprocessing.convert_string_sequences_to_list(ligands)
-        receptors = preprocessing.convert_string_sequences_to_list(receptors)
+        ligands, _ = preprocessing.split_string_to_list(ligands)
+        receptors, _ = preprocessing.split_string_to_list(receptors)
+
         ligands, receptors = add_sep_tokens_between_chains(
             ligands, receptors, sep_token=self._suffix, merge_chains=True
         )
@@ -81,8 +86,8 @@ class SequencePairPreprocessingPipeline:
         ligands, receptors = preprocess_multi_chain_sequences(
             ligands, receptors
         )
-        ligands = preprocessing.convert_string_sequences_to_list(ligands)
-        receptors = preprocessing.convert_string_sequences_to_list(receptors)
+        ligands, _ = preprocessing.split_string_to_list(ligands)
+        receptors, _ = preprocessing.split_string_to_list(receptors)
         ligands, receptors = add_sep_tokens_between_chains(
             ligands, receptors, sep_token=self._suffix, merge_chains=True
         )
@@ -134,7 +139,14 @@ class MultiChainPreprocessingPipeline:
         )
         ligands = preprocessing.prott5_sequence_preprocessing(ligands)
         receptors = preprocessing.prott5_sequence_preprocessing(receptors)
-        return ligands, receptors
+
+        ligands, num_ligand_chains = preprocessing.split_string_to_list(
+            ligands
+        )
+        receptors, num_receptor_chains = preprocessing.split_string_to_list(
+            receptors
+        )
+        return ligands, num_ligand_chains, receptors, num_receptor_chains
 
     def _ankh_preprocessing(
         self,
@@ -144,9 +156,13 @@ class MultiChainPreprocessingPipeline:
         ligands, receptors = preprocess_multi_chain_sequences(
             ligands, receptors
         )
-        ligands = preprocessing.convert_string_sequences_to_list(ligands)
-        receptors = preprocessing.convert_string_sequences_to_list(receptors)
-        return ligands, receptors
+        ligands, num_ligand_chains = preprocessing.split_string_to_list(
+            ligands
+        )
+        receptors, num_receptor_chains = preprocessing.split_string_to_list(
+            receptors
+        )
+        return ligands, num_ligand_chains, receptors, num_receptor_chains
 
     def _esm_preprocessing(
         self,
@@ -156,9 +172,13 @@ class MultiChainPreprocessingPipeline:
         ligands, receptors = preprocess_multi_chain_sequences(
             ligands, receptors
         )
-        ligands = preprocessing.convert_string_sequences_to_list(ligands)
-        receptors = preprocessing.convert_string_sequences_to_list(receptors)
-        return ligands, receptors
+        ligands, num_ligand_chains = preprocessing.split_string_to_list(
+            ligands
+        )
+        receptors, num_receptor_chains = preprocessing.split_string_to_list(
+            receptors
+        )
+        return ligands, num_ligand_chains, receptors, num_receptor_chains
 
     def preprocess(
         self, ligands: str, receptors: str

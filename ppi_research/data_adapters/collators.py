@@ -176,16 +176,18 @@ class MultiChainCollator:
             receptor_sequence = b["receptor"]
             label = b["affinity"]
 
-            ligand_sequence, receptor_sequence = self.preprocessor.preprocess(
+            (
+                ligand_sequence,
+                num_ligand_chains,
+                receptor_sequence,
+                num_receptor_chains,
+            ) = self.preprocessor.preprocess(
                 ligand_sequence,
                 receptor_sequence,
             )
 
             if self.labels_preprocessing_function is not None:
                 label = self.labels_preprocessing_function(label)
-
-            num_ligand_chains = len(ligand_sequence)
-            num_receptor_chains = len(receptor_sequence)
 
             ligand_sequences.extend(ligand_sequence)
             receptor_sequences.extend(receptor_sequence)
