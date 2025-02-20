@@ -15,9 +15,11 @@ allow-direct-references = true
 name = "ppi_research"
 authors = [
     {name="Hazem Essam", email="hazem@proteinea.com"},
+    {name="Mohamed Elshaffei", email="shaffei@proteinea.com"},
 ]
 maintainers = [
     {name="Hazem Essam", email="hazem@proteinea.com"},
+    {name="Mohamed Elshaffei", email="shaffei@proteinea.com"},
 ]
 version = "1.0.0"
 
@@ -32,12 +34,12 @@ classifiers = [
 ]
 
 dependencies = [
-    "accelerate==0.34.2",
-    "scikit-learn",
-    "torch",
-    "transformers==4.44.2",
-    "datasets==2.21.0",
-    "peft==0.6.2",
+    "accelerate==1.4.0",
+    "scikit-learn==1.6.1",
+    "torch==2.6.0",
+    "transformers==4.49.0",
+    "datasets==3.3.1",
+    "peft==0.14.0",
 ]
 
 [tool.black]
