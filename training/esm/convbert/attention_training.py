@@ -60,7 +60,10 @@ def main(cfg: DictConfig):
         **cfg.train_config,
     )
 
-    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(cfg.dataset_name)
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
+        cfg.dataset_config.repo_id,
+        cfg.dataset_config.name,
+    )
 
     trainer = Trainer(
         model=downstream_model,

@@ -4,10 +4,10 @@ from datasets import load_dataset
 from ppi_research.data_adapters.dataset_adapters import ColumnNames
 
 
-def load_ppb_affinity_dataset():
+def load_ppb_affinity_dataset(name):
     train, validation, test = load_dataset(
         "proteinea/ppb_affinity",
-        "filtered",
+        name,
         split=["train", "validation", "test"],
         trust_remote_code=True,
     )

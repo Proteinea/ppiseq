@@ -54,8 +54,10 @@ def main(cfg: DictConfig):
         shared_attn=cfg.attn_pool_add_config.shared_attention,
     )
 
-    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(cfg.dataset_name)
-
+    train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
+        cfg.dataset_config.repo_id,
+        cfg.dataset_config.name,
+    )
     training_args = get_default_training_args(
         run_name,
         seed,

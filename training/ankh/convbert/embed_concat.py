@@ -57,7 +57,8 @@ def main(cfg: DictConfig):
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        cfg.dataset_name
+        cfg.dataset_config.repo_id,
+        cfg.dataset_config.name,
     )
 
     trainer = Trainer(

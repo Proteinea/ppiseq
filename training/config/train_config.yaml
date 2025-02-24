@@ -6,7 +6,10 @@ defaults:
 
 
 backbone: ankh # for later use.
-dataset_name: "ppb_affinity"
+dataset_config:
+  repo_id: "ppb_affinity"
+  name: "filtered"
+
 pooler: avg
 
 label_transform_config:
