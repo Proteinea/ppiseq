@@ -38,6 +38,8 @@ multichain_config:
 attn_pool_add_config:
   shared_attention: true
   shared_convbert: true
+  use_ffn: true
+  ffn_multiplier: 1
 
 embed_concat_config:
   concat_first: true

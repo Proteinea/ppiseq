@@ -13,6 +13,8 @@ class AttnPoolAddConvBERTModel(nn.Module):
         pooler: nn.Module | str,
         shared_convbert: bool = True,
         shared_attention: bool = True,
+        use_ffn: bool = False,
+        ffn_multiplier: int = 1,
         model_name: str | None = None,
         embedding_name: str | None = None,
     ):
@@ -20,6 +22,8 @@ class AttnPoolAddConvBERTModel(nn.Module):
         self.embed_dim = backbone.config.hidden_size
         self.shared_convbert = shared_convbert
         self.shared_attention = shared_attention
+        self.use_ffn = use_ffn
+        self.ffn_multiplier = ffn_multiplier
 
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,
@@ -70,6 +74,15 @@ class AttnPoolAddConvBERTModel(nn.Module):
                 bias=False,
                 batch_first=True,
             )
+
+        if use_ffn:
+            intermediate_dim = self.embed_dim * self.ffn_multiplier
+            self.ffn = nn.Sequential(
+                nn.Linear(self.embed_dim, intermediate_dim),
+                nn.SiLU(),
+                nn.Linear(intermediate_dim, self.embed_dim),
+            )
+
         self.regressor = nn.Linear(self.embed_dim, 1)
         self.reset_parameters()
 
@@ -148,6 +161,8 @@ class AttnPoolAddConvBERTModel(nn.Module):
         pooled_output_2 = self.pooler(receptor_embed, receptor_attention_mask)
 
         pooled_output = pooled_output_1 + pooled_output_2
+        if self.use_ffn:
+            pooled_output = self.ffn(pooled_output)
         logits = self.regressor(pooled_output)
 
         loss = None

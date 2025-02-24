@@ -11,11 +11,15 @@ class AttnPoolAddModel(nn.Module):
         backbone: nn.Module,
         pooler: nn.Module | str,
         shared_attention: bool = True,
+        use_ffn: bool = False,
+        ffn_multiplier: int = 1,
         model_name: str | None = None,
         embedding_name: str | None = None,
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
+        self.use_ffn = use_ffn
+        self.ffn_multiplier = ffn_multiplier
         self.shared_attention = shared_attention
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,
@@ -46,6 +50,14 @@ class AttnPoolAddModel(nn.Module):
                 dropout=0.0,
                 bias=False,
                 batch_first=True,
+            )
+
+        if use_ffn:
+            intermediate_dim = self.embed_dim * self.ffn_multiplier
+            self.ffn = nn.Sequential(
+                nn.Linear(self.embed_dim, intermediate_dim),
+                nn.SiLU(),
+                nn.Linear(intermediate_dim, self.embed_dim),
             )
 
         self.output = nn.Linear(self.embed_dim, 1)
@@ -117,6 +129,8 @@ class AttnPoolAddModel(nn.Module):
         pooled_ligand = self.pooler(ligand_embed, ligand_attention_mask)
         pooled_receptor = self.pooler(receptor_embed, receptor_attention_mask)
         pooled_output = pooled_ligand + pooled_receptor
+        if self.use_ffn:
+            pooled_output = self.ffn(pooled_output)
         logits = self.output(pooled_output)
 
         loss = None

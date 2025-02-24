@@ -51,6 +51,8 @@ def main(cfg: DictConfig):
         backbone=model,
         pooler=cfg.pooler,
         shared_attention=cfg.attn_pool_add_config.shared_attention,
+        use_ffn=cfg.attn_pool_add_config.use_ffn,
+        ffn_multiplier=cfg.attn_pool_add_config.ffn_multiplier,
         model_name="prott5",
         embedding_name="last_hidden_state",
     )
