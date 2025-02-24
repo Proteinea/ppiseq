@@ -17,10 +17,10 @@ from ppi_research.utils import set_seed
 from transformers import T5ForConditionalGeneration
 from transformers import T5Tokenizer
 from transformers import Trainer
-from transformers import TrainingArguments
 import hydra
 from omegaconf import DictConfig
 from ppi_research.data_adapters.preprocessing import log_transform_labels
+from ppi_research.utils import get_default_training_args
 
 seed = 7
 set_seed(seed=seed)
@@ -75,32 +75,10 @@ def main(cfg: DictConfig):
         seed=seed,
     )
 
-    training_args = TrainingArguments(
-        output_dir=run_name + "_weights",
-        run_name=run_name,
-        num_train_epochs=20,
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
-        warmup_steps=1000,
-        learning_rate=1e-3,
-        weight_decay=0.0,
-        logging_dir=f"./logs_{run_name}",
-        logging_steps=1,
-        do_train=True,
-        do_eval=True,
-        eval_strategy="epoch",
-        gradient_accumulation_steps=16,
-        fp16=False,
-        fp16_opt_level="02",
-        seed=seed,
-        load_best_model_at_end=True,
-        save_total_limit=1,
-        metric_for_best_model="eval_validation_rmse",
-        greater_is_better=False,
-        save_strategy="epoch",
-        report_to="wandb",
-        remove_unused_columns=False,
-        save_safetensors=False,
+    training_args = get_default_training_args(
+        run_name,
+        seed,
+        **cfg.train_config,
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(cfg.dataset_name)

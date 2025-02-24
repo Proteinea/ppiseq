@@ -14,11 +14,11 @@ from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import EmbedConcatModel
 from ppi_research.utils import create_run_name
+from ppi_research.utils import get_default_training_args
 from ppi_research.utils import set_seed
 from transformers import AutoTokenizer
 from transformers import T5ForConditionalGeneration
 from transformers import Trainer
-from transformers import TrainingArguments
 from ppi_research.data_adapters.preprocessing import log_transform_labels
 import hydra
 from omegaconf import DictConfig
@@ -65,32 +65,10 @@ def main(cfg: DictConfig):
         concat_first=cfg.embed_concat_config.concat_first,
     )
 
-    training_args = TrainingArguments(
-        output_dir=run_name + "_weights",
-        run_name=run_name,
-        num_train_epochs=cfg.train_config.num_train_epochs,
-        per_device_train_batch_size=cfg.train_config.per_device_train_batch_size, # noqa
-        per_device_eval_batch_size=cfg.train_config.per_device_eval_batch_size,
-        warmup_steps=cfg.train_config.warmup_steps,
-        learning_rate=cfg.train_config.learning_rate,
-        weight_decay=cfg.train_config.weight_decay,
-        logging_dir=f"./logs_{run_name}",
-        logging_steps=cfg.train_config.logging_steps,
-        do_train=True,
-        do_eval=True,
-        eval_strategy=cfg.train_config.eval_strategy,
-        gradient_accumulation_steps=cfg.train_config.gradient_accumulation_steps,  # noqa
-        fp16=False,
-        fp16_opt_level="02",
-        seed=seed,
-        load_best_model_at_end=cfg.train_config.load_best_model_at_end,
-        save_total_limit=cfg.train_config.save_total_limit,
-        metric_for_best_model=cfg.train_config.metric_for_best_model,
-        greater_is_better=cfg.train_config.greater_is_better,
-        save_strategy=cfg.train_config.save_strategy,
-        report_to="wandb",
-        remove_unused_columns=cfg.train_config.remove_unused_columns,
-        save_safetensors=cfg.train_config.save_safetensors,
+    training_args = get_default_training_args(
+        run_name,
+        seed,
+        **cfg.train_config,
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
