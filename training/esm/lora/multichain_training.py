@@ -64,7 +64,7 @@ def main(cfg: DictConfig):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="convbert_multichain",
+        setup="lora_multichain",
         seed=seed,
         aggregation_method=cfg.multichain_config.aggregation_method,
         use_ffn=cfg.multichain_config.use_ffn,
