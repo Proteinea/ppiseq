@@ -7,8 +7,8 @@ defaults:
 
 backbone: ankh # for later use.
 dataset_config:
-  repo_id: "ppb_affinity"
-  name: "filtered"
+  repo_id: ppb_affinity
+  name: filtered
 
 pooler: avg
 
@@ -52,7 +52,7 @@ perceiver_config:
   num_perceiver_layers: 1
   num_self_layers: 1
   gated: false
-  activation: "silu"
+  activation: silu
   shared_perceiver: true
 
 train_config:
@@ -63,13 +63,14 @@ train_config:
   learning_rate: 5e-4
   weight_decay: 0.0
   logging_steps: 1
-  eval_strategy: "epoch"
+  eval_strategy: epoch
   gradient_accumulation_steps: 32
   save_total_limit: 1
-  metric_for_best_model: "eval_validation_spearman"
+  metric_for_best_model: eval_validation_spearman
   greater_is_better: true
-  save_strategy: "epoch"
+  save_strategy: epoch
   seed: 7
   remove_unused_columns: false
   save_safetensors: false
   load_best_model_at_end: true
+  report_to: wandb

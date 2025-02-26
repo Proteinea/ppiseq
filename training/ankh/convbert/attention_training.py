@@ -3,7 +3,6 @@ from functools import partial
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 from ppi_research import data_adapters
@@ -53,7 +52,9 @@ def main(cfg: DictConfig):
         pooler=cfg.pooler,
         seed=seed,
         shared_convbert=cfg.attn_pool_add_config.shared_convbert,
-        shared_attn=cfg.attn_pool_add_config.shared_attention,
+        shared_attention=cfg.attn_pool_add_config.shared_attention,
+        use_ffn=cfg.attn_pool_add_config.use_ffn,
+        ffn_multiplier=cfg.attn_pool_add_config.ffn_multiplier,
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(

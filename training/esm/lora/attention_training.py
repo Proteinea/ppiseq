@@ -3,7 +3,6 @@ from functools import partial
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 from peft import LoraConfig
@@ -64,6 +63,8 @@ def main(cfg: DictConfig):
         pooler=cfg.pooler,
         seed=seed,
         shared_attention=cfg.attn_pool_add_config.shared_attention,
+        use_ffn=cfg.attn_pool_add_config.use_ffn,
+        ffn_multiplier=cfg.attn_pool_add_config.ffn_multiplier,
     )
 
     training_args = get_default_training_args(
