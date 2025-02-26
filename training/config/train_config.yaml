@@ -66,7 +66,7 @@ train_config:
   eval_strategy: "epoch"
   gradient_accumulation_steps: 32
   save_total_limit: 1
-  metric_for_best_model: "eval_validation_spearmanr"
+  metric_for_best_model: "eval_validation_spearman"
   greater_is_better: true
   save_strategy: "epoch"
   seed: 7
