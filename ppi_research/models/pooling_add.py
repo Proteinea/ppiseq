@@ -3,6 +3,7 @@ from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 import torch
 from ppi_research.layers import poolers
+from ppi_research.layers import losses
 
 
 class PoolingAdditionModel(nn.Module):
@@ -12,6 +13,9 @@ class PoolingAdditionModel(nn.Module):
         pooler: nn.Module | str,
         model_name: str | None = None,
         embedding_name: str | None = None,
+        gradient_checkpointing: bool = False,
+        loss_fn: str = "mse",
+        loss_fn_options: dict = {},
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
@@ -20,8 +24,10 @@ class PoolingAdditionModel(nn.Module):
             model_name=model_name,
             embedding_name=embedding_name,
             trainable=True,
+            gradient_checkpointing=gradient_checkpointing,
         )
         self.pooler = poolers.get(pooler, self.embed_dim)
+        self.loss_fn = losses.get(loss_fn, loss_fn_options)
         self.output = nn.Linear(self.embed_dim, 1)
         self.reset_parameters()
 
@@ -52,7 +58,7 @@ class PoolingAdditionModel(nn.Module):
 
         loss = None
         if labels is not None:
-            loss = nn.functional.mse_loss(input=logits, target=labels)
+            loss = self.loss_fn(logits, labels)
 
         return {
             "logits": logits,

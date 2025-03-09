@@ -9,9 +9,9 @@ from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import EmbedConcatConvBERTModel
-from ppi_research.utils import create_run_name
-from ppi_research.utils import get_default_training_args
-from ppi_research.utils import set_seed
+from ppi_research.training_utils import create_run_name
+from ppi_research.training_utils import get_default_training_args
+from ppi_research.training_utils import set_seed
 from transformers import AutoTokenizer
 from transformers import T5EncoderModel
 from transformers import Trainer
@@ -37,8 +37,12 @@ def main(cfg: DictConfig):
         backbone=model,
         pooler=cfg.pooler,
         concat_first=cfg.embed_concat_config.concat_first,
+        convbert_dropout=cfg.convbert_config.convbert_dropout,
+        convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
         model_name="ankh",
         embedding_name="last_hidden_state",
+        loss_fn=cfg.loss_config.name,
+        loss_fn_options=cfg.loss_config.options,
     )
 
     run_name = create_run_name(
@@ -47,6 +51,7 @@ def main(cfg: DictConfig):
         pooler=cfg.pooler,
         concat_first=cfg.embed_concat_config.concat_first,
         seed=seed,
+        loss_fn=cfg.loss_config.name,
     )
 
     training_args = get_default_training_args(

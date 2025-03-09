@@ -4,6 +4,7 @@ from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 import torch
 from ppi_research.layers import poolers
+from ppi_research.layers import losses
 
 
 class PerceiverModel(nn.Module):
@@ -22,6 +23,9 @@ class PerceiverModel(nn.Module):
         activation: str = "silu",
         gated: bool = False,
         shared_perceiver: bool = True,
+        gradient_checkpointing: bool = False,
+        loss_fn: str = "mse",
+        loss_fn_options: dict = {},
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
@@ -34,10 +38,11 @@ class PerceiverModel(nn.Module):
             model_name=model_name,
             embedding_name=embedding_name,
             trainable=True,
+            gradient_checkpointing=gradient_checkpointing,
         )
         self.pooler = poolers.get(pooler, self.embed_dim)
+        self.loss_fn = losses.get(loss_fn, loss_fn_options)
         self.shared_perceiver = shared_perceiver
-
         if shared_perceiver:
             self.perceiver = Perceiver(
                 embed_dim=self.embed_dim,
@@ -116,7 +121,7 @@ class PerceiverModel(nn.Module):
 
         loss = None
         if labels is not None:
-            loss = nn.functional.mse_loss(input=logits, target=labels)
+            loss = self.loss_fn(logits, labels)
 
         return {
             "logits": logits,

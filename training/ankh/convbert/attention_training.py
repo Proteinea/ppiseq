@@ -9,15 +9,15 @@ from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import AttnPoolAddConvBERTModel
-from ppi_research.utils import create_run_name
-from ppi_research.utils import set_seed
+from ppi_research.training_utils import create_run_name
+from ppi_research.training_utils import set_seed
 from transformers import AutoTokenizer
 from transformers import T5EncoderModel
 from transformers import Trainer
 import hydra
 from omegaconf import DictConfig
 from ppi_research.data_adapters.preprocessing import log_transform_labels
-from ppi_research.utils import get_default_training_args
+from ppi_research.training_utils import get_default_training_args
 
 
 @hydra.main(
@@ -40,10 +40,14 @@ def main(cfg: DictConfig):
         pooler=cfg.pooler,
         shared_convbert=cfg.attn_pool_add_config.shared_convbert,
         shared_attention=cfg.attn_pool_add_config.shared_attention,
+        convbert_dropout=cfg.convbert_config.convbert_dropout,
+        convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
         use_ffn=cfg.attn_pool_add_config.use_ffn,
         ffn_multiplier=cfg.attn_pool_add_config.ffn_multiplier,
         model_name="ankh",
         embedding_name="last_hidden_state",
+        loss_fn=cfg.loss_config.name,
+        loss_fn_options=cfg.loss_config.options,
     )
 
     run_name = create_run_name(
@@ -55,6 +59,7 @@ def main(cfg: DictConfig):
         shared_attention=cfg.attn_pool_add_config.shared_attention,
         use_ffn=cfg.attn_pool_add_config.use_ffn,
         ffn_multiplier=cfg.attn_pool_add_config.ffn_multiplier,
+        loss_fn=cfg.loss_config.name,
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(

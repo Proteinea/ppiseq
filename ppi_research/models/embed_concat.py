@@ -3,6 +3,7 @@ import torch
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 from ppi_research.layers import poolers
+from ppi_research.layers import losses
 
 
 class EmbedConcatModel(nn.Module):
@@ -13,6 +14,9 @@ class EmbedConcatModel(nn.Module):
         concat_first: bool = True,
         model_name: str | None = None,
         embedding_name: str | None = None,
+        gradient_checkpointing: bool = False,
+        loss_fn: str = "mse",
+        loss_fn_options: dict = {},
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
@@ -22,8 +26,11 @@ class EmbedConcatModel(nn.Module):
             model_name=model_name,
             embedding_name=embedding_name,
             trainable=True,
+            gradient_checkpointing=gradient_checkpointing,
         )
         self.pooler = poolers.get(pooler, self.embed_dim)
+        self.loss_fn = losses.get(loss_fn, loss_fn_options)
+
         hidden_dim = (
             self.embed_dim if self.concat_first else self.embed_dim * 2
         )
@@ -73,7 +80,7 @@ class EmbedConcatModel(nn.Module):
 
         loss = None
         if labels is not None:
-            loss = nn.functional.mse_loss(input=logits, target=labels)
+            loss = self.loss_fn(logits, labels)
 
         return {
             "logits": logits,

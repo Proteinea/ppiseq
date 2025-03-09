@@ -37,8 +37,12 @@ def main(cfg: DictConfig):
     downstream_model = SequenceConcatConvBERTModel(
         backbone=model,
         pooler=cfg.pooler,
+        convbert_dropout=cfg.convbert_config.convbert_dropout,
+        convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
         model_name="esm2",
         embedding_name="last_hidden_state",
+        loss_fn=cfg.loss_config.name,
+        loss_fn_options=cfg.loss_config.options,
     )
 
     run_name = create_run_name(
@@ -46,6 +50,7 @@ def main(cfg: DictConfig):
         setup="convbert_sequence_concat",
         pooler=cfg.pooler,
         seed=seed,
+        loss_fn=cfg.loss_config.name,
     )
 
     training_args = get_default_training_args(

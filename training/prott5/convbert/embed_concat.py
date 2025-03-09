@@ -38,8 +38,12 @@ def main(cfg: DictConfig):
         backbone=model,
         pooler=cfg.pooler,
         concat_first=cfg.embed_concat_config.concat_first,
+        convbert_dropout=cfg.convbert_config.convbert_dropout,
+        convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
         model_name="prott5",
         embedding_name="last_hidden_state",
+        loss_fn=cfg.loss_config.name,
+        loss_fn_options=cfg.loss_config.options,
     )
 
     run_name = create_run_name(
@@ -48,6 +52,7 @@ def main(cfg: DictConfig):
         pooler=cfg.pooler,
         concat_first=cfg.embed_concat_config.concat_first,
         seed=seed,
+        loss_fn=cfg.loss_config.name,
     )
 
     training_args = get_default_training_args(

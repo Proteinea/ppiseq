@@ -4,6 +4,7 @@ import torch
 from typing import Dict
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from ppi_research.layers import poolers
+from ppi_research.layers import losses
 
 
 def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
@@ -30,6 +31,9 @@ class MultiChainModel(nn.Module):
         bias: bool = False,
         model_name: str | None = None,
         embedding_name: str | None = None,
+        gradient_checkpointing: bool = False,
+        loss_fn: str = "mse",
+        loss_fn_options: dict = {},
     ):
         super().__init__()
 
@@ -68,11 +72,14 @@ class MultiChainModel(nn.Module):
                 chains_pooler, self.embed_dim
             )
 
+        self.loss_fn = losses.get(loss_fn, loss_fn_options)
+
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,
             model_name=model_name,
             embedding_name=embedding_name,
             trainable=True,
+            gradient_checkpointing=gradient_checkpointing,
         )
 
         if self.use_ffn:
@@ -168,7 +175,7 @@ class MultiChainModel(nn.Module):
         """
         if labels is None:
             return None
-        return nn.functional.mse_loss(logits, labels)
+        return self.loss_fn(logits, labels)
 
     def forward(
         self,

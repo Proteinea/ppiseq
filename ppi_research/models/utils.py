@@ -56,12 +56,19 @@ class BackbonePairEmbeddingExtraction(nn.Module):
         model_name: str | None = None,
         embedding_name: str | None = None,
         trainable: bool = True,
+        gradient_checkpointing: bool = False,
     ):
         super().__init__()
         self.backbone = backbone
         self.model_name = model_name
         self.embedding_name = embedding_name
         self.trainable = trainable
+        self.gradient_checkpointing = gradient_checkpointing
+
+        if self.gradient_checkpointing:
+            self.backbone.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
 
         if not self.trainable:
             freeze_parameters(self.backbone)
@@ -109,12 +116,19 @@ class BackboneConcatEmbeddingExtraction(nn.Module):
         model_name: str | None = None,
         embedding_name: str | None = None,
         trainable: bool = True,
+        gradient_checkpointing: bool = False,
     ):
         super().__init__()
         self.backbone = backbone
         self.model_name = model_name
         self.embedding_name = embedding_name
         self.trainable = trainable
+        self.gradient_checkpointing = gradient_checkpointing
+
+        if self.gradient_checkpointing:
+            self.backbone.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
 
         if not self.trainable:
             freeze_parameters(self.backbone)
@@ -136,3 +150,29 @@ class BackboneConcatEmbeddingExtraction(nn.Module):
             embedding_name=self.embedding_name,
         )
         return embed
+
+
+class NaNObserver(torch.overrides.TorchFunctionMode):
+    def __init__(self):
+        super().__init__()
+
+    def __torch_function__(self, func, types, args=(), kwargs=None):
+        if kwargs is None:
+            kwargs = {}
+
+        for idx, arg in enumerate(args):
+            if torch.isnan(arg).any():
+                raise ValueError(f"NaN detected in the argument {idx}")
+
+        for key, value in kwargs.items():
+            if torch.isnan(value).any():
+                raise ValueError(f"NaN detected in the argument {key}")
+
+        result = func(*args, **kwargs)
+
+        if torch.isnan(result).any():
+            raise ValueError(
+                f"NaN detected in the result at function: {func.__name__}"
+            )
+
+        return result

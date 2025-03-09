@@ -3,7 +3,8 @@ import torch
 from ppi_research.layers import poolers
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
-from transformers.models import convbert
+from ppi_research.layers.convbert_encoder import ConvBertEncoder
+from ppi_research.layers import losses
 
 
 class EmbedConcatConvBERTModel(nn.Module):
@@ -12,8 +13,12 @@ class EmbedConcatConvBERTModel(nn.Module):
         backbone: nn.Module,
         pooler: nn.Module | str,
         concat_first: bool = False,
+        convbert_dropout: float = 0.2,
+        convbert_attn_dropout: float = 0.1,
         model_name: str | None = None,
         embedding_name: str | None = None,
+        loss_fn: str = "mse",
+        loss_fn_options: dict = {},
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
@@ -25,16 +30,15 @@ class EmbedConcatConvBERTModel(nn.Module):
             trainable=False,
         )
         self.pooler = poolers.get(pooler, self.embed_dim)
-        convbert_config = convbert.ConvBertConfig(
-            hidden_size=self.embed_dim,
-            num_hidden_layers=1,
-            num_attention_heads=8,
-            intermediate_size=self.embed_dim // 2,
-            conv_kernel_size=7,
+        self.loss_fn = losses.get(loss_fn, loss_fn_options)
+        self.convbert_model = ConvBertEncoder(
+            input_dim=self.embed_dim,
+            num_heads=8,
+            hidden_dim=self.embed_dim // 2,
+            kernel_size=7,
+            dropout=convbert_dropout,
+            attn_dropout=convbert_attn_dropout,
         )
-        # We use only one convbert layer in
-        # our benchmarking so we just use `ConvBertLayer`.
-        self.convbert_layer = convbert.ConvBertLayer(convbert_config)
         hidden_dim = (
             self.embed_dim if self.concat_first else self.embed_dim * 2
         )
@@ -89,22 +93,30 @@ class EmbedConcatConvBERTModel(nn.Module):
             concat_attn_mask = torch.cat(
                 [ligand_attention_mask, receptor_attention_mask], dim=1
             )
-            embed_output = self.convbert_layer(embed_output)[0]
+            embed_output = self.convbert_model(
+                embed_output, concat_attn_mask
+            )
             pooled_output = self.pooler(embed_output, concat_attn_mask)
         else:
-            ligand_embed = self.convbert_layer(ligand_embed)[0]
-            receptor_embed = self.convbert_layer(receptor_embed)[0]
+            ligand_embed = self.convbert_model(
+                ligand_embed, ligand_attention_mask
+            )
+            receptor_embed = self.convbert_model(
+                receptor_embed, receptor_attention_mask
+            )
             pooled_ligand = self.pooler(ligand_embed, ligand_attention_mask)
             pooled_receptor = self.pooler(
                 receptor_embed, receptor_attention_mask
             )
-            pooled_output = torch.cat([pooled_ligand, pooled_receptor], dim=1)
+            pooled_output = torch.cat(
+                [pooled_ligand, pooled_receptor], dim=1
+            )
 
         logits = self.output(pooled_output)
 
         loss = None
         if labels is not None:
-            loss = nn.functional.mse_loss(input=logits, target=labels)
+            loss = self.loss_fn(logits, labels)
 
         return {
             "logits": logits,

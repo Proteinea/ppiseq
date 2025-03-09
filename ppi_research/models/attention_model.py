@@ -3,6 +3,7 @@ from ppi_research.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 import torch
 from ppi_research.layers import poolers
+from ppi_research.layers import losses
 
 
 class AttnPoolAddModel(nn.Module):
@@ -15,6 +16,9 @@ class AttnPoolAddModel(nn.Module):
         ffn_multiplier: int = 1,
         model_name: str | None = None,
         embedding_name: str | None = None,
+        gradient_checkpointing: bool = False,
+        loss_fn: str = "mse",
+        loss_fn_options: dict = {},
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
@@ -26,8 +30,11 @@ class AttnPoolAddModel(nn.Module):
             model_name=model_name,
             embedding_name=embedding_name,
             trainable=True,
+            gradient_checkpointing=gradient_checkpointing,
         )
         self.pooler = poolers.get(pooler, self.embed_dim)
+        self.loss_fn = losses.get(loss_fn, loss_fn_options)
+
         if shared_attention:
             self.attn = nn.MultiheadAttention(
                 embed_dim=self.embed_dim,
@@ -135,7 +142,7 @@ class AttnPoolAddModel(nn.Module):
 
         loss = None
         if labels is not None:
-            loss = nn.functional.mse_loss(input=logits, target=labels)
+            loss = self.loss_fn(logits, labels)
 
         return {
             "logits": logits,

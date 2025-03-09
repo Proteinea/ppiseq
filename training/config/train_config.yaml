@@ -6,6 +6,18 @@ defaults:
 
 
 backbone: ankh # for later use.
+enable_gradient_checkpointing: false
+use_lora: false
+
+loss_config:
+  name: mse
+  options: null
+
+convbert_config:
+  convbert_dropout: 0.2
+  convbert_attn_dropout: 0.1
+  kernel_size: 7
+
 dataset_config:
   repo_id: ppb_affinity
   name: filtered

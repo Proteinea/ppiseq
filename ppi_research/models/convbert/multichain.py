@@ -3,8 +3,9 @@ from torch import nn
 import torch
 from typing import Dict
 from ppi_research.models.utils import BackbonePairEmbeddingExtraction
-from transformers.models import convbert
+from ppi_research.layers.convbert_encoder import ConvBertEncoder
 from ppi_research.layers import poolers
+from ppi_research.layers import losses
 
 
 def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
@@ -34,10 +35,14 @@ class MultiChainConvBERTModel(nn.Module):
         shared_chains_pooler: bool = False,
         shared_convbert: bool = True,
         aggregation_method: str = "concat",
+        convbert_dropout: float = 0.2,
+        convbert_attn_dropout: float = 0.1,
         use_ffn: bool = False,
         bias: bool = False,
         model_name: str | None = None,
         embedding_name: str | None = None,
+        loss_fn: str = "mse",
+        loss_fn_options: dict = {},
     ):
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
@@ -76,6 +81,8 @@ class MultiChainConvBERTModel(nn.Module):
                 chains_pooler, self.embed_dim
             )
 
+        self.loss_fn = losses.get(loss_fn, loss_fn_options)
+
         self.backbone = BackbonePairEmbeddingExtraction(
             backbone=backbone,
             model_name=model_name,
@@ -83,22 +90,31 @@ class MultiChainConvBERTModel(nn.Module):
             trainable=False,
         )
 
-        convbert_config = convbert.ConvBertConfig(
-            hidden_size=self.embed_dim,
-            num_hidden_layers=1,
-            num_attention_heads=8,
-            intermediate_size=self.embed_dim // 2,
-            conv_kernel_size=7,
-        )
-
         if self.shared_convbert:
-            self.convbert_layer = convbert.ConvBertLayer(convbert_config)
-        else:
-            self.ligand_convbert_layer = convbert.ConvBertLayer(
-                convbert_config
+            self.convbert_model = ConvBertEncoder(
+                input_dim=self.embed_dim,
+                num_heads=8,
+                hidden_dim=self.embed_dim // 2,
+                kernel_size=7,
+                dropout=convbert_dropout,
+                attn_dropout=convbert_attn_dropout,
             )
-            self.receptor_convbert_layer = convbert.ConvBertLayer(
-                convbert_config
+        else:
+            self.ligand_convbert_model = ConvBertEncoder(
+                input_dim=self.embed_dim,
+                num_heads=8,
+                hidden_dim=self.embed_dim // 2,
+                kernel_size=7,
+                dropout=convbert_dropout,
+                attn_dropout=convbert_attn_dropout,
+            )
+            self.receptor_convbert_model = ConvBertEncoder(
+                input_dim=self.embed_dim,
+                num_heads=8,
+                hidden_dim=self.embed_dim // 2,
+                kernel_size=7,
+                dropout=convbert_dropout,
+                attn_dropout=convbert_attn_dropout,
             )
 
         if self.use_ffn:
@@ -191,7 +207,7 @@ class MultiChainConvBERTModel(nn.Module):
         """
         if labels is None:
             return None
-        return nn.functional.mse_loss(logits, labels)
+        return self.loss_fn(logits, labels)
 
     def forward(
         self,
@@ -233,11 +249,19 @@ class MultiChainConvBERTModel(nn.Module):
 
         # Apply the convbert layer
         if self.shared_convbert:
-            ligand_embed = self.convbert_layer(ligand_embed)[0]
-            receptor_embed = self.convbert_layer(receptor_embed)[0]
+            ligand_embed = self.convbert_model(
+                ligand_embed, ligand_attention_mask
+            )
+            receptor_embed = self.convbert_model(
+                receptor_embed, receptor_attention_mask
+            )
         else:
-            ligand_embed = self.ligand_convbert_layer(ligand_embed)[0]
-            receptor_embed = self.receptor_convbert_layer(receptor_embed)[0]
+            ligand_embed = self.ligand_convbert_model(
+                ligand_embed, ligand_attention_mask
+            )
+            receptor_embed = self.receptor_convbert_model(
+                receptor_embed, receptor_attention_mask
+            )
 
         ligand_pooler = (
             self.global_pooler
