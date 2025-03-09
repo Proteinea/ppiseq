@@ -12,5 +12,5 @@ from ppi_research.models.convbert.multichain import MultiChainConvBERTModel  # n
 from ppi_research.models.multichain import MultiChainModel
 from ppi_research.models.backbones import load_esm_model
 from ppi_research.models.backbones import load_prott5_model
-from ppi_research.models.backbones import load_convbert_model
+from ppi_research.models.backbones import load_ankh_model
 from ppi_research.models.utils import NaNObserver
