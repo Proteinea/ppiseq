@@ -9,12 +9,12 @@ from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import MultiChainConvBERTModel
-from ppi_research.utils import create_run_name
-from ppi_research.utils import set_seed
+from ppi_research.training_utils import create_run_name
+from ppi_research.training_utils import set_seed
 from transformers import AutoModel
 from transformers import AutoTokenizer
 from transformers import Trainer
-from ppi_research.utils import get_default_training_args
+from ppi_research.training_utils import get_default_training_args
 import hydra
 from omegaconf import DictConfig
 from ppi_research.data_adapters.preprocessing import log_transform_labels

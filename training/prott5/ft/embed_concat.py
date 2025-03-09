@@ -10,15 +10,15 @@ from ppi_research import data_adapters
 from ppi_research.data_adapters import ppi_datasets
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import EmbedConcatModel
-from ppi_research.utils import create_run_name
-from ppi_research.utils import set_seed
+from ppi_research.training_utils import create_run_name
+from ppi_research.training_utils import set_seed
 from transformers import Trainer
 import hydra
 from omegaconf import DictConfig
 from ppi_research.data_adapters.preprocessing import log_transform_labels
-from ppi_research.utils import get_default_training_args
+from ppi_research.training_utils import get_default_training_args
 from ppi_research.models.backbones import load_prott5_model
-from ppi_research.utils import add_lora_prefix
+from ppi_research.training_utils import add_lora_prefix
 
 
 @hydra.main(
