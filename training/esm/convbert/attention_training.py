@@ -52,7 +52,7 @@ def main(cfg: DictConfig):
 
     run_name = create_run_name(
         backbone=ckpt,
-        setup="convbert_attn_pooled_addition",
+        setup="convbert_attn_pool_add",
         pooler=cfg.pooler,
         seed=seed,
         shared_convbert=cfg.attn_pool_add_config.shared_convbert,
