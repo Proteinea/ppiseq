@@ -73,6 +73,7 @@ def main(cfg: DictConfig):
         seed=seed,
         loss_fn=cfg.loss_config.name,
         shared_perceiver=cfg.perceiver_config.shared_perceiver,
+        num_latents=cfg.perceiver_config.num_latents,
     )
 
     training_args = get_default_training_args(
