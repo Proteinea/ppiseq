@@ -38,6 +38,8 @@ def get_default_training_args(run_name: str, seed: int, **train_config):
     train_config.pop("fp16", None)
     train_config.pop("fp16_opt_level", None)
     train_config.pop("remove_unused_columns", None)
+    train_config.pop("seed", None)
+    train_config.pop("load_best_model_at_end", None)
 
     output_dir = "weights_" + run_name
     logging_dir = "logs_" + run_name
