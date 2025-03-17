@@ -47,6 +47,7 @@ def main(cfg: DictConfig):
         pooler=cfg.pooler,
         model_name="ankh",
         embedding_name="last_hidden_state",
+        num_latents=cfg.perceiver_config.num_latents,
         num_heads=cfg.perceiver_config.num_heads,
         hidden_dim=cfg.perceiver_config.hidden_dim,
         bias=cfg.perceiver_config.bias,
