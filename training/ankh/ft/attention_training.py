@@ -45,6 +45,7 @@ def main(cfg: DictConfig):
     )
 
     downstream_model = AttnPoolAddModel(
+        backbone=model,
         pooler=cfg.pooler,
         shared_attention=cfg.attn_pool_add_config.shared_attention,
         use_ffn=cfg.attn_pool_add_config.use_ffn,
