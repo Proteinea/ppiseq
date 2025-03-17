@@ -64,7 +64,6 @@ def main(cfg: DictConfig):
         pooler=cfg.pooler,
         concat_first=cfg.embed_concat_config.concat_first,
         seed=seed,
-        
         loss_fn=cfg.loss_config.name,
     )
 
