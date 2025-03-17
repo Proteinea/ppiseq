@@ -47,6 +47,7 @@ def main(cfg: DictConfig):
     downstream_model = EmbedConcatModel(
         backbone=model,
         pooler=cfg.pooler,
+        concat_first=cfg.embed_concat_config.concat_first,
         model_name="prott5",
         embedding_name="last_hidden_state",
         gradient_checkpointing=cfg.enable_gradient_checkpointing,
@@ -64,6 +65,7 @@ def main(cfg: DictConfig):
         pooler=cfg.pooler,
         seed=seed,
         loss_fn=cfg.loss_config.name,
+        concat_first=cfg.embed_concat_config.concat_first,
     )
 
     training_args = get_default_training_args(
