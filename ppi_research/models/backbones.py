@@ -25,7 +25,7 @@ def load_ankh_model(
             bias=bias,
             target_modules=target_modules,
         )
-        model = get_peft_model(model, lora_config)
+        model = get_peft_model(model, lora_config).encoder
     return model, tokenizer
 
 
@@ -71,5 +71,5 @@ def load_prott5_model(
             bias=bias,
             target_modules=target_modules,
         )
-        model = get_peft_model(model, lora_config)
+        model = get_peft_model(model, lora_config).encoder
     return model, tokenizer
