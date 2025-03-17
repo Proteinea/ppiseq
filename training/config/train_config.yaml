@@ -1,49 +1,47 @@
-defaults:
-  - _self_
-  - model_configs@esm: esm
-  - model_configs@ankh: ankh
-  - model_configs@prott5: prott5
-
-
-backbone: ankh # for later use.
+ckpt: facebook/esm2_t33_650M_UR50D
+max_length: 2000
+architecture: sc
+embedding_name: last_hidden_state
 enable_gradient_checkpointing: false
-use_lora: false
 
 loss_config:
   name: mse
   options: null
 
 convbert_config:
+  enable: false
   convbert_dropout: 0.2
   convbert_attn_dropout: 0.1
-  kernel_size: 7
 
 dataset_config:
   repo_id: ppb_affinity
   name: filtered
 
-pooler: avg
+pooler: attention
 
 label_transform_config:
   log_base: 10
   eps: 1e-10
 
 lora_config:
+  enable: false
   r: 16
   alpha: 32
   bias: none
   use_dora: false
   dropout: 0.0
+  target_modules:
+    - q
+    - v
 
 
 multichain_config:
-  global_pooler: avg
   chains_pooler: attention
   use_ffn: true
   bias: false
   aggregation_method: concat
-  shared_global_pooler: false
-  shared_chains_pooler: false
+  shared_global_pooler: true
+  shared_chains_pooler: true
   shared_convbert: true
 
 
@@ -57,7 +55,7 @@ embed_concat_config:
   concat_first: true
 
 perceiver_config:
-  num_latents: 512
+  num_latents: 64
   num_heads: 8
   hidden_dim: null
   bias: false
@@ -85,4 +83,10 @@ train_config:
   remove_unused_columns: false
   save_safetensors: false
   load_best_model_at_end: true
-  report_to: wandb
+  report_to: none
+  ddp_find_unused_parameters: false # set true with ESM with full finetuning
+
+early_stop_config:
+  enable: true
+  patience: 5
+  threshold: 0.0
