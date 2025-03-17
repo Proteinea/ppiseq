@@ -58,7 +58,7 @@ def main(cfg: DictConfig):
         loss_fn_options=cfg.loss_config.options,
     )
 
-    setup = add_lora_prefix("attn_pooled_addition", use_lora)
+    setup = add_lora_prefix("attn_pool_add", use_lora)
     run_name = create_run_name(
         backbone=ckpt,
         setup=setup,
