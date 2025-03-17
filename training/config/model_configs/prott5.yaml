@@ -1,5 +1,5 @@
 ckpt: Rostlab/prot_t5_xl_uniref50
-max_length: 1024
+max_length: 2000
 target_modules:
   - q
   - v

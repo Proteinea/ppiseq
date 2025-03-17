@@ -1,5 +1,5 @@
 ckpt: ElnaggarLab/ankh-base
-max_length: 1024
+max_length: 2000
 
 
 target_modules:
