@@ -19,7 +19,17 @@ from ppi_research.models.backbones import ankh_checkpoints
 from ppi_research.models.backbones import esm_checkpoints
 from ppi_research.models.backbones import prott5_checkpoints
 
-valid_archs = ["pad", "ec", "mc", "pc", "sc"]
+
+arch_to_collator_map = {
+    "pad": PairCollator,
+    "ec": PairCollator,
+    "mc": MultiChainCollator,
+    "pc": PairCollator,
+    "sc": SequenceConcatCollator,
+}
+
+
+valid_archs = list(arch_to_collator_map.keys())
 
 
 def get_run_configs(cfg) -> str:
@@ -135,7 +145,7 @@ def get_default_training_args(run_name: str, **train_config):
     return training_args
 
 
-def get_ppi_model(backbone: torch.nn.Module, model_name: str, cfg):
+def get_ppi_downstream_model(backbone: torch.nn.Module, model_name: str, cfg):
     arch = cfg.architecture
     common_kwargs = dict(
         backbone=backbone,
@@ -158,7 +168,7 @@ def get_ppi_model(backbone: torch.nn.Module, model_name: str, cfg):
             return AttnPoolAddConvBERTModel(
                 shared_convbert=cfg.attn_pool_add_config.shared_convbert,
                 convbert_dropout=cfg.convbert_config.convbert_dropout,
-                convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
+                convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout, # noqa
                 **kwargs,
             )
         return AttnPoolAddModel(
@@ -173,7 +183,7 @@ def get_ppi_model(backbone: torch.nn.Module, model_name: str, cfg):
         if cfg.convbert_config.enable:
             return EmbedConcatConvBERTModel(
                 convbert_dropout=cfg.convbert_config.convbert_dropout,
-                convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
+                convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout, # noqa
                 **kwargs,
             )
         return EmbedConcatModel(
@@ -185,8 +195,8 @@ def get_ppi_model(backbone: torch.nn.Module, model_name: str, cfg):
             dict(
                 global_pooler=common_kwargs.pop("pooler"),
                 chains_pooler=cfg.multichain_config.chains_pooler,
-                shared_global_pooler=cfg.multichain_config.shared_global_pooler,
-                shared_chains_pooler=cfg.multichain_config.shared_chains_pooler,
+                shared_global_pooler=cfg.multichain_config.shared_global_pooler, # noqa
+                shared_chains_pooler=cfg.multichain_config.shared_chains_pooler, # noqa
                 aggregation_method=cfg.multichain_config.aggregation_method,
                 use_ffn=cfg.multichain_config.use_ffn,
                 bias=cfg.multichain_config.bias,
@@ -197,7 +207,7 @@ def get_ppi_model(backbone: torch.nn.Module, model_name: str, cfg):
             return MultiChainConvBERTModel(
                 shared_convbert=cfg.attn_pool_add_config.shared_convbert,
                 convbert_dropout=cfg.convbert_config.convbert_dropout,
-                convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
+                convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout, # noqa
                 **kwargs,
             )
         return MultiChainModel(
@@ -221,7 +231,7 @@ def get_ppi_model(backbone: torch.nn.Module, model_name: str, cfg):
         if cfg.convbert_config.enable:
             return SequenceConcatConvBERTModel(
                 convbert_dropout=cfg.convbert_config.convbert_dropout,
-                convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
+                convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout, # noqa
                 **common_kwargs,
             )
         return SequenceConcatModel(
@@ -235,22 +245,13 @@ def get_ppi_model(backbone: torch.nn.Module, model_name: str, cfg):
         )
 
 
-arch_to_collator_map = {
-    "pad": PairCollator,
-    "ec": PairCollator,
-    "mc": MultiChainCollator,
-    "pc": PairCollator,
-    "sc": SequenceConcatCollator,
-}
-
-
-def get_collator_cls(arch: str):
-    if arch not in valid_archs:
+def get_collator_cls(identifier: str):
+    if identifier not in valid_archs:
         raise ValueError(
-            f"Unknown architecture: {arch}, "
+            f"Unknown architecture: {identifier}, "
             f"Valid architectures: {valid_archs}"
         )
-    return arch_to_collator_map[arch]
+    return arch_to_collator_map[identifier]
 
 
 def validate_config(cfg):
