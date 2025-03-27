@@ -6,6 +6,14 @@ import torch
 from torch import nn
 
 
+def freezed_forward(model: nn.Module, model_inputs: Dict):
+    if model.training:
+        model.eval()
+
+    with torch.no_grad():
+        return model(**model_inputs)
+
+
 def extract_embeddings(
     model: nn.Module,
     model_inputs: Dict,
@@ -21,9 +29,7 @@ def extract_embeddings(
     if trainable:
         output = model(**model_inputs)
     else:
-        model.eval()
-        with torch.no_grad():
-            output = model(**model_inputs)
+        output = freezed_forward(model, model_inputs)
 
     if embedding_name is not None:
         return getattr(output, embedding_name)
@@ -38,67 +44,100 @@ def preprocess_inputs(
     return {"input_ids": sequence, "attention_mask": attention_mask}
 
 
+def freeze_parameters(model: nn.Module):
+    for p in model.parameters():
+        p.requires_grad_(False)
+
+
 class BackbonePairEmbeddingExtraction(nn.Module):
-    def __init__(self, backbone, model_name, embedding_name, trainable=True):
+    def __init__(
+        self,
+        backbone,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
+        trainable: bool = True,
+        gradient_checkpointing: bool = False,
+    ):
         super().__init__()
         self.backbone = backbone
         self.model_name = model_name
         self.embedding_name = embedding_name
         self.trainable = trainable
+        self.gradient_checkpointing = gradient_checkpointing
+
+        if self.gradient_checkpointing:
+            self.backbone.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
 
         if not self.trainable:
-            for p in self.backbone.parameters():
-                p.requires_grad_(False)
+            freeze_parameters(self.backbone)
 
     def forward(
         self,
-        protein_1,
-        protein_2,
-        attention_mask_1=None,
-        attention_mask_2=None,
+        ligand_input_ids: torch.LongTensor,
+        receptor_input_ids: torch.LongTensor,
+        ligand_attention_mask: torch.LongTensor | None = None,
+        receptor_attention_mask: torch.LongTensor | None = None,
     ):
-        inputs_1 = preprocess_inputs(
-            protein_1,
-            attention_mask_1,
+        ligand_inputs = preprocess_inputs(
+            ligand_input_ids,
+            ligand_attention_mask,
             model_name=self.model_name,
         )
 
-        inputs_2 = preprocess_inputs(
-            protein_2,
-            attention_mask_2,
+        receptor_inputs = preprocess_inputs(
+            receptor_input_ids,
+            receptor_attention_mask,
             model_name=self.model_name,
         )
 
-        protein_1_embed = extract_embeddings(
+        ligand_embed = extract_embeddings(
             model=self.backbone,
-            model_inputs=inputs_1,
+            model_inputs=ligand_inputs,
             trainable=self.trainable,
             embedding_name=self.embedding_name,
         )
 
-        protein_2_embed = extract_embeddings(
+        receptor_embed = extract_embeddings(
             model=self.backbone,
-            model_inputs=inputs_2,
+            model_inputs=receptor_inputs,
             trainable=self.trainable,
             embedding_name=self.embedding_name,
         )
 
-        return protein_1_embed, protein_2_embed
+        return ligand_embed, receptor_embed
 
 
 class BackboneConcatEmbeddingExtraction(nn.Module):
-    def __init__(self, backbone, model_name, embedding_name, trainable=True):
+    def __init__(
+        self,
+        backbone,
+        model_name: str | None = None,
+        embedding_name: str | None = None,
+        trainable: bool = True,
+        gradient_checkpointing: bool = False,
+    ):
         super().__init__()
         self.backbone = backbone
         self.model_name = model_name
         self.embedding_name = embedding_name
         self.trainable = trainable
+        self.gradient_checkpointing = gradient_checkpointing
+
+        if self.gradient_checkpointing:
+            self.backbone.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
 
         if not self.trainable:
-            for p in self.backbone.parameters():
-                p.requires_grad_(False)
+            freeze_parameters(self.backbone)
 
-    def forward(self, input_ids, attention_mask=None):
+    def forward(
+        self,
+        input_ids: torch.LongTensor,
+        attention_mask: torch.LongTensor | None = None,
+    ):
         inputs = preprocess_inputs(
             input_ids,
             attention_mask,
@@ -111,3 +150,29 @@ class BackboneConcatEmbeddingExtraction(nn.Module):
             embedding_name=self.embedding_name,
         )
         return embed
+
+
+class NaNObserver(torch.overrides.TorchFunctionMode):
+    def __init__(self):
+        super().__init__()
+
+    def __torch_function__(self, func, types, args=(), kwargs=None):
+        if kwargs is None:
+            kwargs = {}
+
+        for idx, arg in enumerate(args):
+            if torch.isnan(arg).any():
+                raise ValueError(f"NaN detected in the argument {idx}")
+
+        for key, value in kwargs.items():
+            if torch.isnan(value).any():
+                raise ValueError(f"NaN detected in the argument {key}")
+
+        result = func(*args, **kwargs)
+
+        if torch.isnan(result).any():
+            raise ValueError(
+                f"NaN detected in the result at function: {func.__name__}"
+            )
+
+        return result

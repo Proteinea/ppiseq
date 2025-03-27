@@ -1,10 +1,8 @@
 import os
-
-from ppi_research.layers import poolers
+from functools import partial
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
-# os.environ['WANDB_MODE'] = 'disabled'
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
@@ -12,74 +10,58 @@ from ppi_research.data_adapters import ppi_datasets
 from ppi_research.data_adapters.collators import SequenceConcatCollator
 from ppi_research.metrics import compute_ppi_metrics
 from ppi_research.models import SequenceConcatConvBERTModel
-from ppi_research.preprocessing.prott5 import sequence_pair_preprocessing
-from ppi_research.preprocessing.prott5 import sequence_preprocessing
-from ppi_research.utils import create_run_name
-from ppi_research.utils import parse_common_args
-from ppi_research.utils import prott5_checkpoint_mapping
-from ppi_research.utils import prott5_checkpoints
-from ppi_research.utils import set_seed
+from ppi_research.training_utils import create_run_name
+from ppi_research.training_utils import set_seed
 from transformers import T5EncoderModel
 from transformers import T5Tokenizer
 from transformers import Trainer
-from transformers import TrainingArguments
+import hydra
+from omegaconf import DictConfig
+from ppi_research.data_adapters.preprocessing import log_transform_labels
+from ppi_research.training_utils import get_default_training_args
 
 
-def main(args):
-    ckpt = args.ckpt
-    ds_name = args.ds_name
-    max_length = args.max_length
-    pooler_name = args.pooler
-    seed = args.seed
+@hydra.main(
+    config_path="../../config",
+    config_name="train_config",
+    version_base=None,
+)
+def main(cfg: DictConfig):
+    ckpt = cfg.prott5.ckpt
+    max_length = cfg.prott5.max_length
+    seed = cfg.train_config.seed
     set_seed(seed=seed)
     print("Checkpoint:", ckpt)
     tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5EncoderModel.from_pretrained(ckpt)
 
-    pooler = poolers.get(pooler_name, embed_dim=model.config.hidden_size)
     downstream_model = SequenceConcatConvBERTModel(
         backbone=model,
-        pooler=pooler,
+        pooler=cfg.pooler,
+        convbert_dropout=cfg.convbert_config.convbert_dropout,
+        convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
         model_name="prott5",
         embedding_name="last_hidden_state",
+        loss_fn=cfg.loss_config.name,
+        loss_fn_options=cfg.loss_config.options,
     )
     run_name = create_run_name(
         backbone=ckpt,
         setup="convbert_sequence_concat",
-        pooler=pooler_name,
+        pooler=cfg.pooler,
         seed=seed,
+        loss_fn=cfg.loss_config.name,
     )
 
-    training_args = TrainingArguments(
-        output_dir=run_name + "_weights",
-        run_name=run_name,
-        num_train_epochs=30,
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
-        warmup_steps=1000,
-        learning_rate=5e-4,
-        weight_decay=0.0,
-        logging_dir=f"./logs_{run_name}",
-        logging_steps=1,
-        do_train=True,
-        do_eval=True,
-        eval_strategy="epoch",
-        gradient_accumulation_steps=32,
-        fp16=False,
-        fp16_opt_level="02",
-        seed=seed,
-        load_best_model_at_end=True,
-        save_total_limit=1,
-        metric_for_best_model="eval_validation_rmse",
-        greater_is_better=False,
-        save_strategy="epoch",
-        report_to="wandb",
-        remove_unused_columns=False,
-        save_safetensors=False,
+    training_args = get_default_training_args(
+        run_name,
+        seed,
+        **cfg.train_config,
     )
 
     train_ds, eval_datasets = ppi_datasets.load_ppi_dataset(
-        ds_name, sequence_preprocessing
+        cfg.dataset_config.repo_id,
+        cfg.dataset_config.name,
     )
 
     trainer = Trainer(
@@ -87,10 +69,13 @@ def main(args):
         args=training_args,
         data_collator=SequenceConcatCollator(
             tokenizer=tokenizer,
-            random_swapping=False,
-            preprocessing_function=sequence_pair_preprocessing,
-            is_split_into_words=True,
+            model_name="prott5",
             max_length=max_length,
+            labels_preprocessing_function=partial(
+                log_transform_labels,
+                base=cfg.label_transform_config.log_base,
+                eps=cfg.label_transform_config.eps,
+            ),
         ),
         train_dataset=train_ds,
         eval_dataset=eval_datasets,
@@ -101,6 +86,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = parse_common_args(checkpoints=prott5_checkpoints())
-    args.ckpt = prott5_checkpoint_mapping(args.ckpt)
-    main(args)
+    main()

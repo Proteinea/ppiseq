@@ -1,0 +1,92 @@
+ckpt: facebook/esm2_t33_650M_UR50D
+max_length: 2000
+architecture: sc
+embedding_name: last_hidden_state
+enable_gradient_checkpointing: false
+
+loss_config:
+  name: mse
+  options: null
+
+convbert_config:
+  enable: false
+  convbert_dropout: 0.2
+  convbert_attn_dropout: 0.1
+
+dataset_config:
+  repo_id: ppb_affinity
+  name: filtered
+
+pooler: attention
+
+label_transform_config:
+  log_base: 10
+  eps: 1e-10
+
+lora_config:
+  enable: false
+  r: 16
+  alpha: 32
+  bias: none
+  use_dora: false
+  dropout: 0.0
+  target_modules:
+    - q
+    - v
+
+
+multichain_config:
+  chains_pooler: attention
+  use_ffn: true
+  bias: false
+  aggregation_method: concat
+  shared_global_pooler: true
+  shared_chains_pooler: true
+  shared_convbert: true
+
+
+attn_pool_add_config:
+  shared_attention: true
+  shared_convbert: true
+  use_ffn: true
+  ffn_multiplier: 1
+
+embed_concat_config:
+  concat_first: true
+
+perceiver_config:
+  num_latents: 64
+  num_heads: 8
+  hidden_dim: null
+  bias: false
+  num_perceiver_layers: 1
+  num_self_layers: 1
+  gated: false
+  activation: silu
+  shared_perceiver: true
+
+train_config:
+  num_train_epochs: 30
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  warmup_steps: 1000
+  learning_rate: 5e-4
+  weight_decay: 0.0
+  logging_steps: 1
+  eval_strategy: epoch
+  gradient_accumulation_steps: 32
+  save_total_limit: 1
+  metric_for_best_model: eval_validation_spearman
+  greater_is_better: true
+  save_strategy: epoch
+  seed: 7
+  remove_unused_columns: false
+  save_safetensors: false
+  load_best_model_at_end: true
+  report_to: none
+  ddp_find_unused_parameters: false # set true with ESM with full finetuning
+
+early_stop_config:
+  enable: true
+  patience: 5
+  threshold: 0.0
