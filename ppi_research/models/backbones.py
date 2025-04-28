@@ -5,7 +5,7 @@ from transformers import AutoModel
 from peft import LoraConfig
 from peft import get_peft_model
 from esm.tokenization.sequence_tokenizer import EsmSequenceTokenizer
-from esm.models.esm3 import ESM3
+from esm.pretrained import ESM3_sm_open_v0
 from collections import namedtuple
 
 
@@ -79,7 +79,7 @@ def load_prott5_model(
 
 
 def load_esm3_model(
-    ckpt: str,
+    ckpt: str = "esm3_sm_open_v0",
     use_lora: bool = False,
     rank: int | None = None,
     alpha: int | None = None,
@@ -88,7 +88,7 @@ def load_esm3_model(
     bias: str | None = None,
 ):
     tokenizer = EsmSequenceTokenizer()
-    model = ESM3.from_pretrained(ckpt)
+    model = ESM3_sm_open_v0()
     if use_lora:
         lora_config = LoraConfig(
             r=rank,
