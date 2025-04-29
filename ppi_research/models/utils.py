@@ -41,7 +41,10 @@ def preprocess_inputs(
     attention_mask: torch.LongTensor | None = None,
     model_name: str | None = None,
 ):
-    return {"input_ids": sequence, "attention_mask": attention_mask}
+    if model_name == "esm3":
+        return {"sequence_tokens": sequence}
+    else:
+        return {"input_ids": sequence, "attention_mask": attention_mask}
 
 
 def freeze_parameters(model: nn.Module):
@@ -57,6 +60,7 @@ class BackbonePairEmbeddingExtraction(nn.Module):
         embedding_name: str | None = None,
         trainable: bool = True,
         gradient_checkpointing: bool = False,
+        normalize: bool = False,
     ):
         super().__init__()
         self.backbone = backbone
@@ -64,6 +68,7 @@ class BackbonePairEmbeddingExtraction(nn.Module):
         self.embedding_name = embedding_name
         self.trainable = trainable
         self.gradient_checkpointing = gradient_checkpointing
+        self.normalize = normalize
 
         if self.gradient_checkpointing:
             self.backbone.gradient_checkpointing_enable(
@@ -106,6 +111,14 @@ class BackbonePairEmbeddingExtraction(nn.Module):
             embedding_name=self.embedding_name,
         )
 
+        if self.normalize:
+            ligand_embed = torch.nn.functional.normalize(
+                ligand_embed, p=2, dim=-1,
+            )
+            receptor_embed = torch.nn.functional.normalize(
+                receptor_embed, p=2, dim=-1,
+            )
+
         return ligand_embed, receptor_embed
 
 
@@ -117,6 +130,7 @@ class BackboneConcatEmbeddingExtraction(nn.Module):
         embedding_name: str | None = None,
         trainable: bool = True,
         gradient_checkpointing: bool = False,
+        normalize: bool = False,
     ):
         super().__init__()
         self.backbone = backbone
@@ -124,6 +138,7 @@ class BackboneConcatEmbeddingExtraction(nn.Module):
         self.embedding_name = embedding_name
         self.trainable = trainable
         self.gradient_checkpointing = gradient_checkpointing
+        self.normalize = normalize
 
         if self.gradient_checkpointing:
             self.backbone.gradient_checkpointing_enable(
@@ -149,6 +164,12 @@ class BackboneConcatEmbeddingExtraction(nn.Module):
             trainable=self.trainable,
             embedding_name=self.embedding_name,
         )
+
+        if self.normalize:
+            embed = torch.nn.functional.normalize(
+                embed, p=2, dim=-1,
+            )
+
         return embed
 
 

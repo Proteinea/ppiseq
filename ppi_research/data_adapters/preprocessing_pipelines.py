@@ -61,7 +61,8 @@ class SequencePairPreprocessingPipeline:
             model_name (str): The name of the model.
         """
         self.model_name = model_name.lower()
-        if self.model_name == "esm":
+        # ESM and ESM3 are handled in the same way
+        if self.model_name in ["esm", "esm3"]:
             self._suffix = "<eos>"
             self._preprocessing_function = self._esm_preprocessing
         elif self.model_name == "ankh":
@@ -224,7 +225,8 @@ class MultiChainPreprocessingPipeline:
             self._preprocessing_function = self._prott5_preprocessing
         elif self.model_name == "ankh":
             self._preprocessing_function = self._ankh_preprocessing
-        elif self.model_name == "esm":
+        # ESM and ESM3 are handled in the same way
+        elif self.model_name in ["esm", "esm3"]:
             self._preprocessing_function = self._esm_preprocessing
         else:
             raise ValueError(f"Model name {self.model_name} not supported.")

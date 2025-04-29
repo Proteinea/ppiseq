@@ -15,10 +15,7 @@ from ppi_research.models import SequenceConcatConvBERTModel
 from ppi_research.data_adapters.collators import PairCollator
 from ppi_research.data_adapters.collators import MultiChainCollator
 from ppi_research.data_adapters.collators import SequenceConcatCollator
-from ppi_research.models.backbones import ankh_checkpoints
-from ppi_research.models.backbones import esm_checkpoints
-from ppi_research.models.backbones import prott5_checkpoints
-
+from ppi_research.models.backbones import supported_checkpoints
 
 arch_to_collator_map = {
     "pad": PairCollator,
@@ -261,13 +258,10 @@ def validate_config(cfg):
             f"Valid architectures: {valid_archs}"
         )
 
-    all_available_ckpts = (
-        ankh_checkpoints + esm_checkpoints + prott5_checkpoints
-    )
-    if cfg.ckpt not in all_available_ckpts:
+    if cfg.ckpt not in supported_checkpoints:
         raise ValueError(
             f"Unsupported ckpt: {cfg.ckpt}, "
-            f"Available backbones: {all_available_ckpts}"
+            f"Available backbones: {supported_checkpoints}"
         )
     if cfg.lora_config.enable and cfg.convbert_config.enable:
         raise ValueError(
@@ -280,6 +274,8 @@ def validate_config(cfg):
 def get_model_name_from_ckpt(ckpt):
     if "prot_t5" in ckpt:
         return "prott5"
+    if "esm3" in ckpt:
+        return "esm3"
     if "esm" in ckpt:
         return "esm"
     if "ankh" in ckpt:
