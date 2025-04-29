@@ -18,6 +18,7 @@ from ppi_research.data_adapters.preprocessing import log_transform_labels
 from ppi_research.training_utils import get_default_training_args
 from ppi_research.training_utils import validate_config
 from ppi_research.training_utils import get_model_name_from_ckpt
+from ppi_research.training_utils import get_model_embedding_name
 from ppi_research.models.backbones import load_backbone
 from transformers.trainer_callback import EarlyStoppingCallback
 
@@ -45,8 +46,13 @@ def main(cfg: DictConfig):
         bias=cfg.lora_config.bias,
     )
 
+    embedding_name = get_model_embedding_name(ckpt)
+
     downstream_model = get_ppi_downstream_model(
-        backbone=model, model_name=model_name, cfg=cfg
+        backbone=model,
+        model_name=model_name,
+        cfg=cfg,
+        embedding_name=embedding_name,
     )
     print(downstream_model)
     run_name = create_run_name(cfg)
