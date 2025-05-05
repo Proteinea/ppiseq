@@ -215,7 +215,13 @@ class PDBProcessor:
             if mut_pos == residue_pos and residue_insertion_code == " ":
                 consumed_mutations.append(mutation)
                 if residue_letter != wt_aa:
-                    if (
+                    if residue_letter == mut_aa:
+                        warnings.warn(
+                            f"Mutation of WT AA {wt_aa} to {mut_aa} "
+                            f"at position {mut_pos} in chain {chain.id} in PDB"
+                            f" {pdb_id} is already applied."
+                        )
+                    elif (
                         index != len(chain.child_list) - 1
                         and self.three_letter_aa_to_one(
                             chain.child_list[index + 1].resname
@@ -242,12 +248,6 @@ class PDBProcessor:
                             f" be {wt_aa}, but found {residue_letter}. The "
                             f"previous AA is {wt_aa}, this might be an off-by-"
                             "one error."
-                        )
-                    elif residue_letter == mut_aa:
-                        warnings.warn(
-                            f"Mutation of WT AA {wt_aa} to {mut_aa} "
-                            f"at position {mut_pos} in chain {chain.id} in PDB"
-                            f" {pdb_id} is already applied."
                         )
                     else:
                         raise IndexError(
