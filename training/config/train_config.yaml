@@ -1,7 +1,6 @@
 ckpt: facebook/esm2_t33_650M_UR50D
 max_length: 2000
 architecture: sc
-embedding_name: last_hidden_state
 enable_gradient_checkpointing: false
 
 loss_config:

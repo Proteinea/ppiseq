@@ -1,5 +1,5 @@
 import random
-
+from omegaconf import DictConfig
 import numpy as np
 import torch
 from transformers import TrainingArguments
@@ -142,13 +142,18 @@ def get_default_training_args(run_name: str, **train_config):
     return training_args
 
 
-def get_ppi_downstream_model(backbone: torch.nn.Module, model_name: str, cfg):
+def get_ppi_downstream_model(
+    backbone: torch.nn.Module,
+    model_name: str,
+    cfg: DictConfig,
+    embedding_name: str,
+):
     arch = cfg.architecture
     common_kwargs = dict(
         backbone=backbone,
         pooler=cfg.pooler,
         model_name=model_name,
-        embedding_name=cfg.embedding_name,
+        embedding_name=embedding_name,
         loss_fn=cfg.loss_config.name,
         loss_fn_options=cfg.loss_config.options,
     )
@@ -280,4 +285,16 @@ def get_model_name_from_ckpt(ckpt):
         return "esm"
     if "ankh" in ckpt:
         return "ankh"
+    raise ValueError(f"Unsupported ckpt: {ckpt}")
+
+
+def get_model_embedding_name(ckpt):
+    if "prot_t5" in ckpt:
+        return "last_hidden_state"
+    if "esm3" in ckpt:
+        return "embeddings"
+    if "esm" in ckpt:
+        return "last_hidden_state"
+    if "ankh" in ckpt:
+        return "last_hidden_state"
     raise ValueError(f"Unsupported ckpt: {ckpt}")
