@@ -23,6 +23,31 @@ class AttnPoolAddConvBERTModel(nn.Module):
         loss_fn: str = "mse",
         loss_fn_options: dict = {},
     ):
+        """Initialize the AttnPoolAddConvBERTModel.
+
+        Args:
+            backbone (nn.Module): The backbone model.
+            pooler (nn.Module | str): The pooler.
+            shared_convbert (bool, optional): Whether to share the convbert.
+            Defaults to True.
+            shared_attention (bool, optional): Whether to share the attention.
+            Defaults to True.
+            convbert_dropout (float, optional): The dropout for the convbert.
+            Defaults to 0.2.
+            convbert_attn_dropout (float, optional): The attention dropout
+            for the convbert. Defaults to 0.1.
+            use_ffn (bool, optional): Whether to use the feedforward network.
+            Defaults to False.
+            ffn_multiplier (int, optional): The multiplier for the feedforward
+            network. Defaults to 1.
+            model_name (str | None, optional): The name of the model.
+            Defaults to None.
+            embedding_name (str | None, optional): The name of the embedding.
+            Defaults to None.
+            loss_fn (str, optional): The loss function. Defaults to "mse".
+            loss_fn_options (dict, optional): The options for the
+            loss function. Defaults to {}.
+        """
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.shared_convbert = shared_convbert

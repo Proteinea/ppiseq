@@ -19,22 +19,22 @@ class ConvBertEncoder(nn.Module):
         head_ratio: int = 2,
         num_groups: int = 1,
     ):
-        """
-        ConvBertEncoder model.
+        """Initialize the ConvBertEncoder.
 
         Args:
-            input_dim: Dimension of the input embeddings.
-            num_heads: Integer specifying the number of attention heads.
-            hidden_dim: Integer specifying the hidden dimension.
-            num_layers: Integer specifying the number of layers.
-            kernel_size: Integer specifying the filter size. Default: 7.
-            dropout: Float specifying the dropout rate. Default: 0.2.
-            attn_dropout: Float specifying the attention dropout rate.
-            Default: 0.2.
-            activation: String specifying the activation function.
-            Default: "gelu".
-            head_ratio: Integer specifying the head ratio. Default: 2.
-            num_groups: Integer specifying the number of groups. Default: 1.
+            input_dim (int): The dimension of the input embeddings.
+            num_heads (int): The number of attention heads.
+            hidden_dim (int): The hidden dimension.
+            num_layers (int, optional): The number of layers.
+                Defaults to 1.
+            kernel_size (int, optional): The filter size. Defaults to 7.
+            dropout (float, optional): The dropout rate. Defaults to 0.2.
+            attn_dropout (float, optional): The attention dropout rate.
+                Defaults to 0.1.
+            activation (str, optional): The activation function.
+                Defaults to "gelu".
+            head_ratio (int, optional): The head ratio. Defaults to 2.
+            num_groups (int, optional): The number of groups. Defaults to 1.
         """
         super().__init__()
 
@@ -58,6 +58,16 @@ class ConvBertEncoder(nn.Module):
         dtype: torch.dtype,
         device: torch.device,
     ) -> torch.FloatTensor:
+        """Get the extended attention mask.
+
+        Args:
+            attention_mask (torch.Tensor): The attention mask.
+            dtype (torch.dtype): The dtype.
+            device (torch.device): The device.
+
+        Returns:
+            torch.FloatTensor: The extended attention mask.
+        """
         attention_mask = attention_mask.to(dtype=dtype, device=device)
         ext_attention_mask = attention_mask[:, None, None, :]
         ext_attention_mask = (

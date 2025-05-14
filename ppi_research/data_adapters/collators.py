@@ -5,8 +5,17 @@ from ppi_research.data_adapters import preprocessing_pipelines
 
 
 def validate_labels_preprocessing_function(
-    labels_preprocessing_function,
+    labels_preprocessing_function: typing.Callable | None,
 ) -> None:
+    """Validate that the labels preprocessing function is callable.
+
+    Args:
+        labels_preprocessing_function (typing.Callable | None): The labels
+            preprocessing function.
+
+    Raises:
+        ValueError: If the labels preprocessing function is not callable.
+    """
     if labels_preprocessing_function is not None and not callable(
         labels_preprocessing_function
     ):
@@ -21,6 +30,18 @@ class PairCollator:
         max_length: int | None = None,
         labels_preprocessing_function: typing.Callable | None = None,
     ):
+        """Initialize the PairCollator.
+
+        Args:
+            tokenizer (typing.Callable): The tokenizer.
+            model_name (str): The model name.
+            max_length (int | None): The maximum length.
+            labels_preprocessing_function (typing.Callable | None): The labels
+                preprocessing function.
+
+        Raises:
+            ValueError: If the labels preprocessing function is not callable.
+        """
         validate_labels_preprocessing_function(labels_preprocessing_function)
         self.tokenizer = tokenizer
         self.model_name = model_name
@@ -32,7 +53,7 @@ class PairCollator:
         )
         self.labels_preprocessing_function = labels_preprocessing_function
 
-    def __call__(self, batch):
+    def __call__(self, batch: typing.List[typing.Dict[str, typing.Any]]):
         ligand_sequences, receptor_sequences, labels = [], [], []
         for b in batch:
             ligand_sequence = b["ligand"]
@@ -96,6 +117,18 @@ class SequenceConcatCollator:
         max_length: int | None = None,
         labels_preprocessing_function: typing.Callable | None = None,
     ):
+        """Initialize the SequenceConcatCollator.
+
+        Args:
+            tokenizer (typing.Callable): The tokenizer.
+            model_name (str): The model name.
+            max_length (int | None): The maximum length.
+            labels_preprocessing_function (typing.Callable | None): The labels
+            preprocessing function.
+
+        Raises:
+            ValueError: If the labels preprocessing function is not callable.
+        """
         validate_labels_preprocessing_function(labels_preprocessing_function)
         self.tokenizer = tokenizer
         self.model_name = model_name
@@ -154,6 +187,18 @@ class MultiChainCollator:
         max_length: int | None = None,
         labels_preprocessing_function: typing.Callable | None = None,
     ):
+        """Initialize the MultiChainCollator.
+
+        Args:
+            tokenizer (typing.Callable): The tokenizer.
+            model_name (str): The model name.
+            max_length (int | None): The maximum length.
+            labels_preprocessing_function (typing.Callable | None): The labels
+                preprocessing function.
+
+        Raises:
+            ValueError: If the labels preprocessing function is not callable.
+        """
         validate_labels_preprocessing_function(labels_preprocessing_function)
         self.tokenizer = tokenizer
         self.model_name = model_name

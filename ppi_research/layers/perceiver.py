@@ -17,6 +17,17 @@ class SelfAttentionAndFeedForward(nn.Module):
         bias: bool = True,
         gated: bool = False,
     ):
+        """Initialize the SelfAttentionAndFeedForward layer.
+
+        Args:
+            embed_dim (int): The dimension of the embeddings.
+            num_heads (int): The number of attention heads.
+            hidden_dim (int): The dimension of the hidden layer.
+            activation (str): The activation function.
+            bias (bool, optional): Whether to use bias. Defaults to True.
+            gated (bool, optional): Whether to use gated feedforward.
+                Defaults to False.
+        """
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -60,6 +71,14 @@ class CrossAttentionAndFeedForward(nn.Module):
         bias: bool = True,
         gated: bool = False,
     ):
+        """Initialize the CrossAttentionAndFeedForward layer.
+
+        Args:
+            embed_dim (int): The dimension of the embeddings.
+            num_heads (int): The number of attention heads.
+            hidden_dim (int): The dimension of the hidden layer.
+            activation (str): The activation function.
+        """
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -106,6 +125,18 @@ class PerceiverLayer(nn.Module):
         bias: bool = True,
         gated: bool = False,
     ):
+        """Initialize the PerceiverLayer.
+
+        Args:
+            embed_dim (int): The dimension of the embeddings.
+            num_heads (int): The number of attention heads.
+            hidden_dim (int): The dimension of the hidden layer.
+            num_self_layers (int): The number of self-attention layers.
+            activation (typing.Callable): The activation function.
+            bias (bool, optional): Whether to use bias. Defaults to True.
+            gated (bool, optional): Whether to use gated feedforward.
+                Defaults to False.
+        """
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -165,6 +196,20 @@ class Perceiver(nn.Module):
         bias: bool = True,
         gated: bool = False,
     ):
+        """Initialize the Perceiver.
+
+        Args:
+            embed_dim (int): The dimension of the embeddings.
+            num_heads (int): The number of attention heads.
+            num_latents (int): The number of latents.
+            hidden_dim (int): The dimension of the hidden layer.
+            num_perceiver_layers (int): The number of perceiver layers.
+            num_self_layers (int): The number of self-attention layers.
+            activation (str): The activation function.
+            bias (bool, optional): Whether to use bias. Defaults to True.
+            gated (bool, optional): Whether to use gated feedforward.
+                Defaults to False.
+        """
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads

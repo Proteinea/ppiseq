@@ -1,10 +1,19 @@
 from __future__ import annotations
+import typing
 from ppi_research.data_adapters.dataset_adapters import PPIDataset
 from datasets import load_dataset
 from ppi_research.data_adapters.dataset_adapters import ColumnNames
 
 
-def load_ppb_affinity_dataset(name):
+def load_ppb_affinity_dataset(name: str):
+    """Load the PPB affinity dataset.
+
+    Args:
+        name (str): The name of the dataset.
+
+    Returns:
+        tuple: The train, validation, and test datasets.
+    """
     train, validation, test = load_dataset(
         "proteinea/ppb_affinity",
         name,
@@ -39,5 +48,19 @@ available_datasets = {
 }
 
 
-def load_ppi_dataset(identifier, *args, **kwargs):
+def load_ppi_dataset(
+    identifier: str,
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.Tuple[PPIDataset, typing.Dict[str, PPIDataset]]:
+    """Load the PPI dataset.
+
+    Args:
+        identifier (str): The identifier of the dataset.
+
+    Returns:
+        tuple: The train, validation, and test datasets.
+    """
+    if identifier not in available_datasets:
+        raise ValueError(f"Dataset {identifier} not found.")
     return available_datasets[identifier](*args, **kwargs)

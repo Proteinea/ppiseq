@@ -7,6 +7,15 @@ import torch.nn.functional as F
 
 
 def softmax(x: torch.FloatTensor, dim: int):
+    """Softmax function with added 1 to the denominator.
+
+    Args:
+        x (torch.FloatTensor): The input tensor.
+        dim (int): The dimension to apply the softmax to.
+
+    Returns:
+        torch.FloatTensor: The softmaxed tensor.
+    """
     # from:
     # https://github.com/google/flaxformer/blame/ee62754ebe5a5eeb111493622de5537133822e3e/flaxformer/components/attention/dense_attention.py#L50 # noqa: E501
     with torch.no_grad():
@@ -22,6 +31,16 @@ def prepare_mask(
     device: torch.device,
     dtype: torch.dtype,
 ) -> torch.FloatTensor:
+    """Prepare the mask for the attention.
+
+    Args:
+        mask (torch.LongTensor): The mask.
+        device (torch.device): The device.
+        dtype (torch.dtype): The dtype.
+
+    Returns:
+        torch.FloatTensor: The prepared mask.
+    """
     assert mask.ndim == 2, "mask must be 2D"
     bsz, seqlen = mask.shape
     mask = mask.to(device=device, dtype=dtype)
@@ -38,6 +57,16 @@ class MultiHeadAttention(nn.Module):
         attn_dropout: float = 0.0,
         bias: bool = True,
     ):
+        """Initialize the MultiHeadAttention.
+
+        Args:
+            embed_dim (int): The embedding dimension.
+            num_heads (int): The number of heads.
+            add_one_to_softmax (bool, optional): Whether to add 1 to the
+            denominator of the softmax. Defaults to False.
+            attn_dropout (float, optional): The dropout rate. Defaults to 0.0.
+            bias (bool, optional): Whether to use bias. Defaults to True.
+        """
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -56,6 +85,18 @@ class MultiHeadAttention(nn.Module):
         v: torch.FloatTensor,
         mask: torch.LongTensor | None = None,
     ):
+        """Scaled dot product attention.
+
+        Args:
+            q (torch.FloatTensor): The query tensor.
+            k (torch.FloatTensor): The key tensor.
+            v (torch.FloatTensor): The value tensor.
+            mask (torch.LongTensor | None, optional): The mask.
+                Defaults to None.
+
+        Returns:
+            torch.FloatTensor: The attention output.
+        """
         q = q * self.scale
         attn_logits = torch.matmul(q, k.transpose(-2, -1))
 
@@ -82,7 +123,18 @@ class MultiHeadAttention(nn.Module):
         q: torch.FloatTensor,
         kv: torch.FloatTensor,
         mask: torch.LongTensor | None = None,
-    ):
+    ) -> torch.FloatTensor:
+        """Forward pass.
+
+        Args:
+            q (torch.FloatTensor): The query tensor.
+            kv (torch.FloatTensor): The key-value tensor.
+            mask (torch.LongTensor | None, optional): The mask.
+                Defaults to None.
+
+        Returns:
+            torch.FloatTensor: The output tensor.
+        """
         xq = self.q_proj(q)
         xk, xv = self.kv_proj(kv).chunk(2, dim=-1)
 
