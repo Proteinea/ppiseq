@@ -7,6 +7,15 @@ from torch import nn
 
 
 def freezed_forward(model: nn.Module, model_inputs: Dict):
+    """Freeze the model and forward the model.
+
+    Args:
+        model (nn.Module): The model.
+        model_inputs (Dict): The model inputs.
+
+    Returns:
+        The model outputs.
+    """
     if model.training:
         model.eval()
 
@@ -20,6 +29,21 @@ def extract_embeddings(
     trainable: bool,
     embedding_name: str | None = None,
 ):
+    """Extract the embeddings from the model.
+
+    Args:
+        model (nn.Module): The model.
+        model_inputs (Dict): The model inputs.
+        trainable (bool): Whether the model is trainable.
+        embedding_name (str | None, optional): The embedding name.
+            Defaults to None.
+
+    Raises:
+        ValueError: If the model inputs are not a dictionary.
+
+    Returns:
+        The embeddings.
+    """
     if not isinstance(model_inputs, dict):
         raise ValueError(
             "Expected `model_inputs` to be of type `dict`. "
@@ -41,6 +65,17 @@ def preprocess_inputs(
     attention_mask: torch.LongTensor | None = None,
     model_name: str | None = None,
 ):
+    """Preprocess the inputs.
+
+    Args:
+        sequence (torch.LongTensor): The sequence.
+        attention_mask (torch.LongTensor | None, optional): The attention mask.
+            Defaults to None.
+        model_name (str | None, optional): The model name. Defaults to None.
+
+    Returns:
+        The preprocessed inputs.
+    """
     if model_name == "esm3":
         return {"sequence_tokens": sequence}
     else:
@@ -48,6 +83,11 @@ def preprocess_inputs(
 
 
 def freeze_parameters(model: nn.Module):
+    """Freeze the parameters of the model.
+
+    Args:
+        model (nn.Module): The model.
+    """
     for p in model.parameters():
         p.requires_grad_(False)
 
@@ -55,13 +95,28 @@ def freeze_parameters(model: nn.Module):
 class BackbonePairEmbeddingExtraction(nn.Module):
     def __init__(
         self,
-        backbone,
+        backbone: nn.Module,
         model_name: str | None = None,
         embedding_name: str | None = None,
         trainable: bool = True,
         gradient_checkpointing: bool = False,
         normalize: bool = False,
     ):
+        """Initialize the BackbonePairEmbeddingExtraction.
+
+        Args:
+            backbone (nn.Module): The backbone.
+            model_name (str | None, optional): The model name.
+                Defaults to None.
+            embedding_name (str | None, optional): The embedding name.
+                Defaults to None.
+            trainable (bool, optional): Whether the model is trainable.
+                Defaults to True.
+            gradient_checkpointing (bool, optional): Whether to use
+                gradient checkpointing. Defaults to False.
+            normalize (bool, optional): Whether to normalize the embeddings.
+                Defaults to False.
+        """
         super().__init__()
         self.backbone = backbone
         self.model_name = model_name
@@ -125,13 +180,28 @@ class BackbonePairEmbeddingExtraction(nn.Module):
 class BackboneConcatEmbeddingExtraction(nn.Module):
     def __init__(
         self,
-        backbone,
+        backbone: nn.Module,
         model_name: str | None = None,
         embedding_name: str | None = None,
         trainable: bool = True,
         gradient_checkpointing: bool = False,
         normalize: bool = False,
     ):
+        """Initialize the BackboneConcatEmbeddingExtraction.
+
+        Args:
+            backbone (nn.Module): The backbone.
+            model_name (str | None, optional): The model name.
+                Defaults to None.
+            embedding_name (str | None, optional): The embedding name.
+                Defaults to None.
+            trainable (bool, optional): Whether the model is trainable.
+                Defaults to True.
+            gradient_checkpointing (bool, optional): Whether to use
+                gradient checkpointing. Defaults to False.
+            normalize (bool, optional): Whether to normalize the embeddings.
+                Defaults to False.
+        """
         super().__init__()
         self.backbone = backbone
         self.model_name = model_name
@@ -175,6 +245,15 @@ class BackboneConcatEmbeddingExtraction(nn.Module):
 
 class NaNObserver(torch.overrides.TorchFunctionMode):
     def __init__(self):
+        """Initialize the NaNObserver. Used to track
+        intermediate tensors and check for NaNs.
+
+        Example usage:
+        ```python
+        with NaNObserver():
+            model(input_ids, attention_mask)
+        ```
+        """
         super().__init__()
 
     def __torch_function__(self, func, types, args=(), kwargs=None):

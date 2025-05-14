@@ -27,6 +27,39 @@ class PerceiverModel(nn.Module):
         loss_fn: str = "mse",
         loss_fn_options: dict = {},
     ):
+        """Initialize the PerceiverModel.
+
+        Args:
+            backbone (nn.Module): The backbone model.
+            pooler (nn.Module | str): The pooler.
+            model_name (str | None, optional): The model name.
+                Defaults to None.
+            embedding_name (str | None, optional): The embedding name.
+                Defaults to None.
+            num_latents (int, optional): The number of latents.
+                Defaults to 512.
+            num_heads (int, optional): The number of heads.
+                Defaults to 8.
+            hidden_dim (int | None, optional): The hidden dimension.
+                Defaults to None.
+            bias (bool, optional): Whether to use the bias.
+                Defaults to False.
+            num_perceiver_layers (int, optional): The number of
+                perceiver layers. Defaults to 1.
+            num_self_layers (int, optional): The number of self layers.
+                Defaults to 1.
+            activation (str, optional): The activation function.
+                Defaults to "silu".
+            gated (bool, optional): Whether to use gated layer.
+                Defaults to False.
+            shared_perceiver (bool, optional): Whether to share the
+                perceiver. Defaults to True.
+            gradient_checkpointing (bool, optional): Whether to use
+                gradient checkpointing. Defaults to False.
+            loss_fn (str, optional): The loss function. Defaults to "mse".
+            loss_fn_options (dict, optional): The options for the loss
+                function. Defaults to {}.
+        """
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.hidden_dim = (
