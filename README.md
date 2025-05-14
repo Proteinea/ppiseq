@@ -2,22 +2,22 @@
 
 ## Installation
 
-1. Clone this repo
+1. Clone `ppi_research` repo.
 2. `cd ppi_research`
 3. `python -m pip install -U -e .`
 
-## Running Ankh/ESM
+## Training
 
-1. `cd ppi_research`
-2. `cd training`
-3. `cd ankh # or cd esm`
-4. `cd lora`
-5. `python attention_training.py --ckpt ankh_base --ds_name skempi # or --ckpt esm_650m`
+```bash
+export CUDA_VISIBLE_DEVICES=0,1
 
-## If you want to know what are the available checkpoints to run use the following:
+# For full finetuning with BFloat16:
+accelerate launch --mixed-precision bf16 train.py
 
-1. `cd ppi_research`
-2. `cd training`
-3. `cd ankh # or cd esm`
-4. `cd lora`
-5. `python attention_training.py --help # this will show you what is the available datasets and checkpoints to pass`
+# For ConvBERT training with frozen embeddings:
+accelerate launch train.py
+
+# Important Note:
+# Set `ddp_find_unused_parameters` parameter to `true` when training ESM2 or ESM3,
+# this parameter is in the `train` key in the training/config/config.yaml
+```
