@@ -12,6 +12,16 @@ class FeedForward(nn.Module):
         gated: bool = False,
         bias: bool = True,
     ):
+        """Initialize FeedForward.
+
+        Args:
+            embed_dim (int): The embedding dimension.
+            hidden_dim (int): The hidden dimension.
+            activation (str): The activation function.
+            gated (bool, optional): Whether to use a gated feedforward.
+            Defaults to False.
+            bias (bool, optional): Whether to use bias. Defaults to True.
+        """
         super().__init__()
         self.embed_dim = embed_dim
         self.hidden_dim = hidden_dim
@@ -38,7 +48,7 @@ class FeedForward(nn.Module):
             if self.gated:
                 nn.init.zeros_(self.gate_proj.bias)
 
-    def forward(self, embeddings: torch.FloatTensor):
+    def forward(self, embeddings: torch.FloatTensor) -> torch.FloatTensor:
         if self.gated:
             gate = self.activation(self.gate_proj(embeddings))
             output = self.proj_1(embeddings)

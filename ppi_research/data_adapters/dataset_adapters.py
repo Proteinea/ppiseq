@@ -5,6 +5,13 @@ from torch.utils.data import Dataset as TorchDataset
 
 
 class ColumnNames(typing.NamedTuple):
+    """Column names for the dataset.
+
+    Args:
+        ligand (str): The ligand column name.
+        receptor (str): The receptor column name.
+        label (str): The label column name.
+    """
     ligand: str
     receptor: str
     label: str
@@ -16,9 +23,18 @@ class PPIDataset(TorchDataset):
         hf_ds: HFDataset,
         column_names: ColumnNames,
     ):
+        """Initialize the PPIDataset.
+
+        Args:
+            hf_ds (HFDataset): The Hugging Face dataset.
+            column_names (ColumnNames): The column names.
+
+        Raises:
+            ValueError: If the column names are not a ColumnNames object.
+        """
         if not isinstance(column_names, ColumnNames):
             raise ValueError(
-                "column_names must be a ColumnNames object. "
+                "`column_names` must be a `ColumnNames` object. "
                 f"Received: {type(column_names)}."
             )
         self.hf_ds = hf_ds

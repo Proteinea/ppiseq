@@ -4,8 +4,8 @@ from transformers import AutoTokenizer
 from transformers import AutoModel
 from peft import LoraConfig
 from peft import get_peft_model
-from esm.tokenization.sequence_tokenizer import EsmSequenceTokenizer
-from esm.pretrained import ESM3_sm_open_v0
+from esm.tokenization.sequence_tokenizer import EsmSequenceTokenizer # noqa # type:ignore
+from esm.pretrained import ESM3_sm_open_v0 # noqa # type:ignore
 from collections import namedtuple
 
 
@@ -18,6 +18,22 @@ def load_ankh_model(
     target_modules: list[str] | None = None,
     bias: str | None = None,
 ):
+    """Load the ANKH model.
+
+    Args:
+        ckpt (str): The checkpoint to load.
+        use_lora (bool, optional): Whether to use LoRA. Defaults to False.
+        rank (int | None, optional): The rank of the LoRA. Defaults to None.
+        alpha (int | None, optional): The alpha for the LoRA. Defaults to None.
+        dropout (float | None, optional): The dropout for the LoRA.
+            Defaults to None.
+        target_modules (list[str] | None, optional): The target modules for
+            the LoRA. Defaults to None.
+        bias (str | None, optional): The bias for the LoRA. Defaults to None.
+
+    Returns:
+        tuple[nn.Module, AutoTokenizer]: The model and the tokenizer.
+    """
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = T5ForConditionalGeneration.from_pretrained(ckpt)
     if use_lora:
@@ -41,6 +57,22 @@ def load_esm_model(
     target_modules: list[str] | None = None,
     bias: str | None = None,
 ):
+    """Load the ESM model.
+
+    Args:
+        ckpt (str): The checkpoint to load.
+        use_lora (bool, optional): Whether to use LoRA. Defaults to False.
+        rank (int | None, optional): The rank of the LoRA. Defaults to None.
+        alpha (int | None, optional): The alpha for the LoRA. Defaults to None.
+        dropout (float | None, optional): The dropout for the LoRA.
+            Defaults to None.
+        target_modules (list[str] | None, optional): The target modules for
+            the LoRA. Defaults to None.
+        bias (str | None, optional): The bias for the LoRA. Defaults to None.
+
+    Returns:
+        tuple[nn.Module, AutoTokenizer]: The model and the tokenizer.
+    """
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     model = AutoModel.from_pretrained(ckpt)
     if use_lora:
@@ -64,6 +96,22 @@ def load_prott5_model(
     target_modules: list[str] | None = None,
     bias: str | None = None,
 ):
+    """Load the ProtT5 model.
+
+    Args:
+        ckpt (str): The checkpoint to load.
+        use_lora (bool, optional): Whether to use LoRA. Defaults to False.
+        rank (int | None, optional): The rank of the LoRA. Defaults to None.
+        alpha (int | None, optional): The alpha for the LoRA. Defaults to None.
+        dropout (float | None, optional): The dropout for the LoRA.
+            Defaults to None.
+        target_modules (list[str] | None, optional): The target modules for
+            the LoRA. Defaults to None.
+        bias (str | None, optional): The bias for the LoRA. Defaults to None.
+
+    Returns:
+        tuple[nn.Module, AutoTokenizer]: The model and the tokenizer.
+    """
     tokenizer = T5Tokenizer.from_pretrained(ckpt)
     model = T5ForConditionalGeneration.from_pretrained(ckpt)
     if use_lora:
@@ -87,6 +135,23 @@ def load_esm3_model(
     target_modules: list[str] | None = None,
     bias: str | None = None,
 ):
+    """Load the ESM3 model.
+
+    Args:
+        ckpt (str, optional): The checkpoint to load.
+            Defaults to "esm3_sm_open_v0".
+        use_lora (bool, optional): Whether to use LoRA. Defaults to False.
+        rank (int | None, optional): The rank of the LoRA. Defaults to None.
+        alpha (int | None, optional): The alpha for the LoRA. Defaults to None.
+        dropout (float | None, optional): The dropout for the LoRA.
+            Defaults to None.
+        target_modules (list[str] | None, optional): The target modules for
+            the LoRA. Defaults to None.
+        bias (str | None, optional): The bias for the LoRA. Defaults to None.
+
+    Returns:
+        tuple[nn.Module, EsmSequenceTokenizer]: The model and the tokenizer.
+    """
     tokenizer = EsmSequenceTokenizer()
     model = ESM3_sm_open_v0()
     if use_lora:
@@ -135,6 +200,23 @@ def load_backbone(
     target_modules: list[str],
     bias: str,
 ):
+    """Load the backbone model.
+
+    Args:
+        ckpt (str): The checkpoint to load.
+        use_lora (bool): Whether to use LoRA.
+        rank (int): The rank of the LoRA.
+        alpha (int): The alpha for the LoRA.
+        dropout (float): The dropout for the LoRA.
+        target_modules (list[str]): The target modules for the LoRA.
+        bias (str): The bias for the LoRA.
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        _type_: _description_
+    """
     if ckpt in ankh_checkpoints:
         return load_ankh_model(
             ckpt=ckpt,

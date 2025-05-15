@@ -19,12 +19,6 @@ def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
         raise ValueError(f"Invalid aggregation method: {aggregation_method}")
 
 
-def report(x, y):
-    allc = torch.allclose(x, y)
-    allt = torch.all(x == y).item()
-    return allc, allt
-
-
 class MultiChainConvBERTModel(nn.Module):
     def __init__(
         self,
@@ -44,6 +38,36 @@ class MultiChainConvBERTModel(nn.Module):
         loss_fn: str = "mse",
         loss_fn_options: dict = {},
     ):
+        """Initialize the MultiChainConvBERTModel.
+
+        Args:
+            backbone (nn.Module): The backbone model.
+            global_pooler (nn.Module | str): The global pooler.
+            chains_pooler (nn.Module | str): The chains pooler.
+            shared_global_pooler (bool, optional): Whether to share the global
+                pooler. Defaults to False.
+            shared_chains_pooler (bool, optional): Whether to share the chains
+                pooler. Defaults to False.
+            shared_convbert (bool, optional): Whether to share the convbert.
+                Defaults to True.
+            aggregation_method (str, optional): The aggregation method.
+                Defaults to "concat".
+            convbert_dropout (float, optional): The dropout for the convbert.
+                Defaults to 0.2.
+            convbert_attn_dropout (float, optional): The attention dropout
+                for the convbert. Defaults to 0.1.
+            use_ffn (bool, optional): Whether to use the feedforward network.
+                Defaults to False.
+            bias (bool, optional): Whether to use bias. Defaults to False.
+            model_name (str | None, optional): The name of the model.
+                Defaults to None.
+            embedding_name (str | None, optional): The name of the embedding.
+                Defaults to None.
+            loss_fn (str, optional): The loss function. Defaults to "mse".
+            loss_fn_options (dict, optional): The options for the loss
+                function. Defaults to {}.
+        """
+
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.use_ffn = use_ffn

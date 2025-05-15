@@ -7,7 +7,24 @@ from ppi_research.layers import poolers
 from ppi_research.layers import losses
 
 
-def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
+def aggregate_chains(
+    sequence_1: torch.FloatTensor,
+    sequence_2: torch.FloatTensor,
+    aggregation_method: str,
+) -> torch.FloatTensor:
+    """Aggregate the chains.
+
+    Args:
+        sequence_1 (torch.FloatTensor): The first sequence.
+        sequence_2 (torch.FloatTensor): The second sequence.
+        aggregation_method (str): The aggregation method.
+
+    Raises:
+        ValueError: If the aggregation method is invalid.
+
+    Returns:
+        torch.FloatTensor: The aggregated chains.
+    """
     if aggregation_method == "concat":
         return torch.cat([sequence_1, sequence_2], dim=-1)
     elif aggregation_method == "mean":
@@ -35,8 +52,32 @@ class MultiChainModel(nn.Module):
         loss_fn: str = "mse",
         loss_fn_options: dict = {},
     ):
-        super().__init__()
+        """Initialize the MultiChainModel.
 
+        Args:
+            backbone (nn.Module): The backbone model.
+            global_pooler (nn.Module | str): The global pooler.
+            chains_pooler (nn.Module | str): The chains pooler.
+            shared_global_pooler (bool, optional): Whether to share the
+                global pooler. Defaults to False.
+            shared_chains_pooler (bool, optional): Whether to share the
+                chains pooler. Defaults to False.
+            aggregation_method (str, optional): The aggregation method.
+                Defaults to "concat".
+            use_ffn (bool, optional): Whether to use the FFN.
+                Defaults to False.
+            bias (bool, optional): Whether to use the bias. Defaults to False.
+            model_name (str | None, optional): The model name.
+                Defaults to None.
+            embedding_name (str | None, optional): The embedding name.
+                Defaults to None.
+            gradient_checkpointing (bool, optional): Whether to use
+                gradient checkpointing. Defaults to False.
+            loss_fn (str, optional): The loss function. Defaults to "mse".
+            loss_fn_options (dict, optional): The options for the loss
+                function. Defaults to {}.
+        """
+        super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.use_ffn = use_ffn
         self.shared_global_pooler = shared_global_pooler

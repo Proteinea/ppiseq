@@ -29,7 +29,18 @@ arch_to_collator_map = {
 valid_archs = list(arch_to_collator_map.keys())
 
 
-def get_run_configs(cfg) -> str:
+def get_run_configs(cfg: DictConfig) -> str:
+    """Get the run configs.
+
+    Args:
+        cfg (DictConfig): The configuration.
+
+    Raises:
+        ValueError: If the architecture is not valid.
+
+    Returns:
+        str: The run configs.
+    """
     common_kwargs = dict(
         backbone=cfg.ckpt,
         setup=cfg.architecture,
@@ -87,7 +98,15 @@ def get_run_configs(cfg) -> str:
     return common_kwargs | arch_kwargs
 
 
-def create_run_name(cfg) -> str:
+def create_run_name(cfg: DictConfig) -> str:
+    """Create a run name from the configuration.
+
+    Args:
+        cfg (DictConfig): The configuration.
+
+    Returns:
+        str: The run name.
+    """
     kwargs = get_run_configs(cfg)
     output = ""
     for k, v in kwargs.items():
@@ -98,13 +117,27 @@ def create_run_name(cfg) -> str:
 
 
 def add_lora_prefix(setup: str, use_lora: bool) -> str:
+    """Add a prefix to the setup string based on whether LORA is used.
+
+    Args:
+        setup (str): The setup string.
+        use_lora (bool): Whether LORA is used.
+
+    Returns:
+        str: The setup string with the prefix.
+    """
     if use_lora:
         return "lora_" + setup
     else:
         return "ft_" + setup
 
 
-def set_seed(seed):
+def set_seed(seed: int):
+    """Set the seed for the random number generators.
+
+    Args:
+        seed (int): The seed.
+    """
     torch.manual_seed(seed)
     random.seed(seed)
     np.random.seed(seed)
@@ -113,6 +146,14 @@ def set_seed(seed):
 
 
 def get_default_training_args(run_name: str, **train_config):
+    """Get the default training arguments.
+
+    Args:
+        run_name (str): The run name.
+
+    Returns:
+        TrainingArguments: The training arguments.
+    """
     train_config.pop("output_dir", None)
     train_config.pop("run_name", None)
     train_config.pop("logging_dir", None)
@@ -148,6 +189,20 @@ def get_ppi_downstream_model(
     cfg: DictConfig,
     embedding_name: str,
 ):
+    """Get the PPI downstream model.
+
+    Args:
+        backbone (torch.nn.Module): The backbone model.
+        model_name (str): The model name.
+        cfg (DictConfig): The configuration.
+        embedding_name (str): The embedding name.
+
+    Raises:
+        ValueError: If the architecture is not valid.
+
+    Returns:
+        torch.nn.Module: The PPI downstream model.
+    """
     arch = cfg.architecture
     common_kwargs = dict(
         backbone=backbone,
@@ -248,6 +303,17 @@ def get_ppi_downstream_model(
 
 
 def get_collator_cls(identifier: str):
+    """Get the collator class.
+
+    Args:
+        identifier (str): The identifier.
+
+    Raises:
+        ValueError: If the identifier is not valid.
+
+    Returns:
+        Callable: The collator class.
+    """
     if identifier not in valid_archs:
         raise ValueError(
             f"Unknown architecture: {identifier}, "
@@ -256,7 +322,18 @@ def get_collator_cls(identifier: str):
     return arch_to_collator_map[identifier]
 
 
-def validate_config(cfg):
+def validate_config(cfg: DictConfig):
+    """Validate the configuration.
+
+    Args:
+        cfg (DictConfig): The configuration.
+
+    Raises:
+        ValueError: If the architecture is not valid.
+        ValueError: If the ckpt is not supported.
+        ValueError: If LORA and ConvBERT are enabled at the same time.
+        ValueError: If the Perceiver model does not support ConvBERT.
+    """
     if cfg.architecture not in valid_archs:
         raise ValueError(
             f"Unknown architecture: {cfg.architecture}, "
@@ -276,7 +353,15 @@ def validate_config(cfg):
         raise ValueError("Perceiver model does not support ConvBERT")
 
 
-def get_model_name_from_ckpt(ckpt):
+def get_model_name_from_ckpt(ckpt: str) -> str:
+    """Get the model name from the ckpt.
+
+    Args:
+        ckpt (str): The ckpt.
+
+    Returns:
+        str: The model name.
+    """
     if "prot_t5" in ckpt:
         return "prott5"
     if "esm3" in ckpt:
@@ -288,7 +373,18 @@ def get_model_name_from_ckpt(ckpt):
     raise ValueError(f"Unsupported ckpt: {ckpt}")
 
 
-def get_model_embedding_name(ckpt):
+def get_model_embedding_name(ckpt: str) -> str:
+    """Get the model embedding name from the ckpt.
+
+    Args:
+        ckpt (str): The ckpt.
+
+    Raises:
+        ValueError: If the ckpt is not supported.
+
+    Returns:
+        str: The model embedding name.
+    """
     if "prot_t5" in ckpt:
         return "last_hidden_state"
     if "esm3" in ckpt:
