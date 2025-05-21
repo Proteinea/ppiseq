@@ -5,15 +5,15 @@ import torch
 from omegaconf import DictConfig
 from transformers import TrainingArguments
 
-from ppiseq.data_adapters.collators import MultiChainCollator
+from ppiseq.data_adapters.collators import HierarchicalPoolingCollator
 from ppiseq.data_adapters.collators import PairCollator
 from ppiseq.data_adapters.collators import SequenceConcatCollator
 from ppiseq.models import AttnPoolAddConvBERTModel
 from ppiseq.models import AttnPoolAddModel
 from ppiseq.models import EmbedConcatConvBERTModel
 from ppiseq.models import EmbedConcatModel
-from ppiseq.models import MultiChainConvBERTModel
-from ppiseq.models import MultiChainModel
+from ppiseq.models import HierarchicalPoolingConvBERTModel
+from ppiseq.models import HierarchicalPoolingModel
 from ppiseq.models import PerceiverModel
 from ppiseq.models import SequenceConcatConvBERTModel
 from ppiseq.models import SequenceConcatModel
@@ -22,7 +22,7 @@ from ppiseq.models.backbones import supported_checkpoints
 arch_to_collator_map = {
     "pad": PairCollator,
     "ec": PairCollator,
-    "mc": MultiChainCollator,
+    "hp": HierarchicalPoolingCollator,
     "pc": PairCollator,
     "sc": SequenceConcatCollator,
 }
@@ -68,14 +68,14 @@ def get_run_configs(cfg: DictConfig) -> str:
         )
     elif arch == "ec":
         arch_kwargs = dict(concat_first=cfg.embed_concat_config.concat_first)
-    elif arch == "mc":
+    elif arch == "hp":
         arch_kwargs = dict(
-            chains_pooler=cfg.multichain_config.chains_pooler,
-            shared_global_pooler=cfg.multichain_config.shared_global_pooler,
-            shared_chains_pooler=cfg.multichain_config.shared_chains_pooler,
-            aggregation_method=cfg.multichain_config.aggregation_method,
-            use_ffn=cfg.multichain_config.use_ffn,
-            bias=cfg.multichain_config.bias,
+            chains_pooler=cfg.hierarchical_pooling_config.chains_pooler,
+            shared_global_pooler=cfg.hierarchical_pooling_config.shared_global_pooler, # noqa
+            shared_chains_pooler=cfg.hierarchical_pooling_config.shared_chains_pooler, # noqa
+            aggregation_method=cfg.hierarchical_pooling_config.aggregation_method, # noqa
+            use_ffn=cfg.hierarchical_pooling_config.use_ffn,
+            bias=cfg.hierarchical_pooling_config.bias,
         )
     elif arch == "pc":
         arch_kwargs = dict(
@@ -249,27 +249,27 @@ def get_ppi_downstream_model(
             **kwargs,
             gradient_checkpointing=cfg.enable_gradient_checkpointing,
         )
-    elif arch == "mc":
+    elif arch == "hp":
         kwargs = (
             dict(
                 global_pooler=common_kwargs.pop("pooler"),
-                chains_pooler=cfg.multichain_config.chains_pooler,
-                shared_global_pooler=cfg.multichain_config.shared_global_pooler, # noqa
-                shared_chains_pooler=cfg.multichain_config.shared_chains_pooler, # noqa
-                aggregation_method=cfg.multichain_config.aggregation_method,
-                use_ffn=cfg.multichain_config.use_ffn,
-                bias=cfg.multichain_config.bias,
+                chains_pooler=cfg.hierarchical_pooling_config.chains_pooler,
+                shared_global_pooler=cfg.hierarchical_pooling_config.shared_global_pooler, # noqa
+                shared_chains_pooler=cfg.hierarchical_pooling_config.shared_chains_pooler, # noqa
+                aggregation_method=cfg.hierarchical_pooling_config.aggregation_method, # noqa
+                use_ffn=cfg.hierarchical_pooling_config.use_ffn,
+                bias=cfg.hierarchical_pooling_config.bias,
             )
             | common_kwargs
         )
         if cfg.convbert_config.enable:
-            return MultiChainConvBERTModel(
+            return HierarchicalPoolingConvBERTModel(
                 shared_convbert=cfg.attn_pool_add_config.shared_convbert,
                 convbert_dropout=cfg.convbert_config.convbert_dropout,
                 convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout, # noqa
                 **kwargs,
             )
-        return MultiChainModel(
+        return HierarchicalPoolingModel(
             **kwargs,
             gradient_checkpointing=cfg.enable_gradient_checkpointing,
         )

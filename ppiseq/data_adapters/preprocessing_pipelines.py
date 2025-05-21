@@ -214,9 +214,9 @@ class SequenceConcatPreprocessingPipeline(SequencePairPreprocessingPipeline):
         return ligands + receptors[1:]
 
 
-class MultiChainPreprocessingPipeline:
+class HierarchicalPoolingPreprocessingPipeline:
     def __init__(self, model_name: str):
-        """Initialize the multi-chain preprocessing pipeline.
+        """Initialize the hierarchical pooling preprocessing pipeline.
 
         Args:
             model_name (str): The name of the model.

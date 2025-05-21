@@ -34,7 +34,7 @@ lora_config:
     - v
 
 
-multichain_config:
+hierarchical_pooling_config:
   chains_pooler: attention
   use_ffn: true
   bias: false
