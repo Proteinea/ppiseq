@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 
 [options]
-packages = "ppi_research"
+packages = "ppiseq"
 zip_safe = "True"
 
 
@@ -12,7 +12,7 @@ zip_safe = "True"
 allow-direct-references = true
 
 [project]
-name = "ppi_research"
+name = "ppiseq"
 authors = [
     {name="Hazem Essam", email="hazem@proteinea.com"},
     {name="Mohamed Elshaffei", email="shaffei@proteinea.com"},

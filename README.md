@@ -1,9 +1,9 @@
-# ppi_research
+# PPISeq
 
 ## Installation
 
-1. Clone `ppi_research` repo.
-2. `cd ppi_research`
+1. Clone `ppiseq` repo.
+2. `cd ppiseq`
 3. `python -m pip install -U -e .`
 
 ## Training

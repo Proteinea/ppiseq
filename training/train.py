@@ -5,21 +5,21 @@ os.environ["WANDB_PROJECT"] = "PPIRefExperiments"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
-from ppi_research.data_adapters import ppi_datasets
-from ppi_research.metrics import compute_ppi_metrics
-from ppi_research.training_utils import get_ppi_downstream_model
-from ppi_research.training_utils import create_run_name
-from ppi_research.training_utils import set_seed
-from ppi_research.training_utils import get_collator_cls
-from transformers import Trainer
 import hydra
 from omegaconf import DictConfig
-from ppi_research.data_adapters.preprocessing import log_transform_labels
-from ppi_research.training_utils import get_default_training_args
-from ppi_research.training_utils import validate_config
-from ppi_research.training_utils import get_model_name_from_ckpt
-from ppi_research.training_utils import get_model_embedding_name
-from ppi_research.models.backbones import load_backbone
+from ppiseq.data_adapters import ppi_datasets
+from ppiseq.data_adapters.preprocessing import log_transform_labels
+from ppiseq.metrics import compute_ppi_metrics
+from ppiseq.models.backbones import load_backbone
+from ppiseq.training_utils import create_run_name
+from ppiseq.training_utils import get_collator_cls
+from ppiseq.training_utils import get_default_training_args
+from ppiseq.training_utils import get_model_embedding_name
+from ppiseq.training_utils import get_model_name_from_ckpt
+from ppiseq.training_utils import get_ppi_downstream_model
+from ppiseq.training_utils import set_seed
+from ppiseq.training_utils import validate_config
+from transformers import Trainer
 from transformers.trainer_callback import EarlyStoppingCallback
 
 
