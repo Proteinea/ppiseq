@@ -5,28 +5,12 @@ from typing import Dict
 import torch
 from ppiseq.layers import losses
 from ppiseq.layers import poolers
+from ppiseq.layers.convbert_encoder import ConvBertEncoder
 from ppiseq.models.utils import BackbonePairEmbeddingExtraction
 from torch import nn
 
 
-def aggregate_chains(
-    sequence_1: torch.FloatTensor,
-    sequence_2: torch.FloatTensor,
-    aggregation_method: str,
-) -> torch.FloatTensor:
-    """Aggregate the chains.
-
-    Args:
-        sequence_1 (torch.FloatTensor): The first sequence.
-        sequence_2 (torch.FloatTensor): The second sequence.
-        aggregation_method (str): The aggregation method.
-
-    Raises:
-        ValueError: If the aggregation method is invalid.
-
-    Returns:
-        torch.FloatTensor: The aggregated chains.
-    """
+def aggregate_chains(sequence_1, sequence_2, aggregation_method: str):
     if aggregation_method == "concat":
         return torch.cat([sequence_1, sequence_2], dim=-1)
     elif aggregation_method == "mean":
@@ -37,7 +21,7 @@ def aggregate_chains(
         raise ValueError(f"Invalid aggregation method: {aggregation_method}")
 
 
-class MultiChainModel(nn.Module):
+class HierarchicalPoolingConvBERTModel(nn.Module):
     def __init__(
         self,
         backbone: nn.Module,
@@ -45,45 +29,53 @@ class MultiChainModel(nn.Module):
         chains_pooler: nn.Module | str,
         shared_global_pooler: bool = False,
         shared_chains_pooler: bool = False,
+        shared_convbert: bool = True,
         aggregation_method: str = "concat",
+        convbert_dropout: float = 0.2,
+        convbert_attn_dropout: float = 0.1,
         use_ffn: bool = False,
         bias: bool = False,
         model_name: str | None = None,
         embedding_name: str | None = None,
-        gradient_checkpointing: bool = False,
         loss_fn: str = "mse",
         loss_fn_options: dict = {},
     ):
-        """Initialize the MultiChainModel.
+        """Initialize the HierarchicalPoolingConvBERTModel.
 
         Args:
             backbone (nn.Module): The backbone model.
             global_pooler (nn.Module | str): The global pooler.
             chains_pooler (nn.Module | str): The chains pooler.
-            shared_global_pooler (bool, optional): Whether to share the
-                global pooler. Defaults to False.
-            shared_chains_pooler (bool, optional): Whether to share the
-                chains pooler. Defaults to False.
+            shared_global_pooler (bool, optional): Whether to share the global
+                pooler. Defaults to False.
+            shared_chains_pooler (bool, optional): Whether to share the chains
+                pooler. Defaults to False.
+            shared_convbert (bool, optional): Whether to share the convbert.
+                Defaults to True.
             aggregation_method (str, optional): The aggregation method.
                 Defaults to "concat".
-            use_ffn (bool, optional): Whether to use the FFN.
+            convbert_dropout (float, optional): The dropout for the convbert.
+                Defaults to 0.2.
+            convbert_attn_dropout (float, optional): The attention dropout
+                for the convbert. Defaults to 0.1.
+            use_ffn (bool, optional): Whether to use the feedforward network.
                 Defaults to False.
-            bias (bool, optional): Whether to use the bias. Defaults to False.
-            model_name (str | None, optional): The model name.
+            bias (bool, optional): Whether to use bias. Defaults to False.
+            model_name (str | None, optional): The name of the model.
                 Defaults to None.
-            embedding_name (str | None, optional): The embedding name.
+            embedding_name (str | None, optional): The name of the embedding.
                 Defaults to None.
-            gradient_checkpointing (bool, optional): Whether to use
-                gradient checkpointing. Defaults to False.
             loss_fn (str, optional): The loss function. Defaults to "mse".
             loss_fn_options (dict, optional): The options for the loss
                 function. Defaults to {}.
         """
+
         super().__init__()
         self.embed_dim = backbone.config.hidden_size
         self.use_ffn = use_ffn
         self.shared_global_pooler = shared_global_pooler
         self.shared_chains_pooler = shared_chains_pooler
+        self.shared_convbert = shared_convbert
         self.aggregation_method = aggregation_method
         input_dim = (
             self.embed_dim * 2
@@ -121,9 +113,35 @@ class MultiChainModel(nn.Module):
             backbone=backbone,
             model_name=model_name,
             embedding_name=embedding_name,
-            trainable=True,
-            gradient_checkpointing=gradient_checkpointing,
+            trainable=False,
         )
+
+        if self.shared_convbert:
+            self.convbert_model = ConvBertEncoder(
+                input_dim=self.embed_dim,
+                num_heads=8,
+                hidden_dim=self.embed_dim // 2,
+                kernel_size=7,
+                dropout=convbert_dropout,
+                attn_dropout=convbert_attn_dropout,
+            )
+        else:
+            self.ligand_convbert_model = ConvBertEncoder(
+                input_dim=self.embed_dim,
+                num_heads=8,
+                hidden_dim=self.embed_dim // 2,
+                kernel_size=7,
+                dropout=convbert_dropout,
+                attn_dropout=convbert_attn_dropout,
+            )
+            self.receptor_convbert_model = ConvBertEncoder(
+                input_dim=self.embed_dim,
+                num_heads=8,
+                hidden_dim=self.embed_dim // 2,
+                kernel_size=7,
+                dropout=convbert_dropout,
+                attn_dropout=convbert_attn_dropout,
+            )
 
         if self.use_ffn:
             self.ffn = nn.Sequential(
@@ -170,9 +188,6 @@ class MultiChainModel(nn.Module):
             -1,
             -1,
         )
-
-        # Apply masks and pool
-        # masked_embeds = expanded_embed * masks.unsqueeze(-1)
 
         pooled_chains = pooler(expanded_embed, masks)
         return pooled_chains
@@ -258,6 +273,22 @@ class MultiChainModel(nn.Module):
             receptor_attention_mask,
         )
 
+        # Apply the convbert layer
+        if self.shared_convbert:
+            ligand_embed = self.convbert_model(
+                ligand_embed, ligand_attention_mask
+            )
+            receptor_embed = self.convbert_model(
+                receptor_embed, receptor_attention_mask
+            )
+        else:
+            ligand_embed = self.ligand_convbert_model(
+                ligand_embed, ligand_attention_mask
+            )
+            receptor_embed = self.receptor_convbert_model(
+                receptor_embed, receptor_attention_mask
+            )
+
         ligand_pooler = (
             self.global_pooler
             if self.shared_global_pooler
@@ -288,9 +319,9 @@ class MultiChainModel(nn.Module):
                 else self.ligand_chains_pooler
             )
             ligand_pooled_chains = self.process_chains(
-                protein_embed=ligand_pooled,
-                chain_ids=ligand_chain_ids,
-                pooler=ligand_chains_pooler,
+                ligand_pooled,
+                ligand_chain_ids,
+                ligand_chains_pooler,
             )
         else:
             ligand_pooled_chains = ligand_pooled
@@ -302,9 +333,9 @@ class MultiChainModel(nn.Module):
                 else self.receptor_chains_pooler
             )
             receptor_pooled_chains = self.process_chains(
-                protein_embed=receptor_pooled,
-                chain_ids=receptor_chain_ids,
-                pooler=receptor_chains_pooler,
+                receptor_pooled,
+                receptor_chain_ids,
+                receptor_chains_pooler,
             )
         else:
             receptor_pooled_chains = receptor_pooled

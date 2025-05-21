@@ -11,12 +11,12 @@ from ppiseq import data_adapters
 from ppiseq.data_adapters import ppi_datasets
 from ppiseq.data_adapters.preprocessing import log_transform_labels
 from ppiseq.metrics import compute_ppi_metrics
-from ppiseq.models.backbones import load_esm_model
-from ppiseq.models.multichain import MultiChainModel
-from ppiseq.training_utils import add_lora_prefix
+from ppiseq.models import HierarchicalPoolingConvBERTModel
 from ppiseq.training_utils import create_run_name
 from ppiseq.training_utils import get_default_training_args
 from ppiseq.training_utils import set_seed
+from transformers import AutoModel
+from transformers import AutoTokenizer
 from transformers import Trainer
 
 
@@ -28,49 +28,43 @@ from transformers import Trainer
 def main(cfg: DictConfig):
     ckpt = cfg.esm.ckpt
     max_length = cfg.esm.max_length
-    seed = int(cfg.train_config.seed)
-    use_lora = cfg.use_lora
+    seed = cfg.train_config.seed
+
     set_seed(seed=seed)
     print("Checkpoint:", ckpt)
+    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+    model = AutoModel.from_pretrained(ckpt)
 
-    model, tokenizer = load_esm_model(
-        ckpt=ckpt,
-        use_lora=use_lora,
-        rank=cfg.lora_config.r,
-        alpha=cfg.lora_config.alpha,
-        dropout=cfg.lora_config.dropout,
-        target_modules=cfg.esm.target_modules,
-        bias=cfg.lora_config.bias,
-    )
-
-    downstream_model = MultiChainModel(
+    downstream_model = HierarchicalPoolingConvBERTModel(
         backbone=model,
-        global_pooler=cfg.multichain_config.global_pooler,
-        chains_pooler=cfg.multichain_config.chains_pooler,
-        shared_global_pooler=cfg.multichain_config.shared_global_pooler,
-        shared_chains_pooler=cfg.multichain_config.shared_chains_pooler,
-        aggregation_method=cfg.multichain_config.aggregation_method,
-        use_ffn=cfg.multichain_config.use_ffn,
-        bias=cfg.multichain_config.bias,
+        global_pooler=cfg.hierarchical_pooling_config.global_pooler,
+        chains_pooler=cfg.hierarchical_pooling_config.chains_pooler,
+        shared_global_pooler=cfg.hierarchical_pooling_config.shared_global_pooler, # noqa
+        shared_chains_pooler=cfg.hierarchical_pooling_config.shared_chains_pooler, # noqa
+        shared_convbert=cfg.hierarchical_pooling_config.shared_convbert,
+        aggregation_method=cfg.hierarchical_pooling_config.aggregation_method,
+        convbert_dropout=cfg.convbert_config.convbert_dropout,
+        convbert_attn_dropout=cfg.convbert_config.convbert_attn_dropout,
+        use_ffn=cfg.hierarchical_pooling_config.use_ffn,
+        bias=cfg.hierarchical_pooling_config.bias,
         model_name="esm2",
         embedding_name="last_hidden_state",
-        gradient_checkpointing=cfg.enable_gradient_checkpointing,
         loss_fn=cfg.loss_config.name,
         loss_fn_options=cfg.loss_config.options,
     )
 
-    setup = add_lora_prefix("multichain", use_lora=use_lora)
     run_name = create_run_name(
         backbone=ckpt,
-        setup=setup,
+        setup="convbert_hierarchical_pooling",
         seed=seed,
-        aggregation_method=cfg.multichain_config.aggregation_method,
-        use_ffn=cfg.multichain_config.use_ffn,
-        bias=cfg.multichain_config.bias,
-        global_pooler=cfg.multichain_config.global_pooler,
-        chains_pooler=cfg.multichain_config.chains_pooler,
-        shared_global_pooler=cfg.multichain_config.shared_global_pooler,
-        shared_chains_pooler=cfg.multichain_config.shared_chains_pooler,
+        shared_convbert=cfg.hierarchical_pooling_config.shared_convbert,
+        aggregation_method=cfg.hierarchical_pooling_config.aggregation_method,
+        use_ffn=cfg.hierarchical_pooling_config.use_ffn,
+        bias=cfg.hierarchical_pooling_config.bias,
+        global_pooler=cfg.hierarchical_pooling_config.global_pooler,
+        chains_pooler=cfg.hierarchical_pooling_config.chains_pooler,
+        shared_global_pooler=cfg.hierarchical_pooling_config.shared_global_pooler, # noqa
+        shared_chains_pooler=cfg.hierarchical_pooling_config.shared_chains_pooler, # noqa
         loss_fn=cfg.loss_config.name,
     )
 
@@ -88,7 +82,7 @@ def main(cfg: DictConfig):
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
-        data_collator=data_adapters.MultiChainCollator(
+        data_collator=data_adapters.HierarchicalPoolingCollator(
             tokenizer=tokenizer,
             model_name="esm",
             max_length=max_length,

@@ -11,8 +11,8 @@ from ppiseq import data_adapters
 from ppiseq.data_adapters import ppi_datasets
 from ppiseq.data_adapters.preprocessing import log_transform_labels
 from ppiseq.metrics import compute_ppi_metrics
-from ppiseq.models import MultiChainModel
-from ppiseq.models.backbones import load_prott5_model
+from ppiseq.models import HierarchicalPoolingModel
+from ppiseq.models.backbones import load_ankh_model
 from ppiseq.training_utils import add_lora_prefix
 from ppiseq.training_utils import create_run_name
 from ppiseq.training_utils import get_default_training_args
@@ -26,51 +26,52 @@ from transformers import Trainer
     version_base=None,
 )
 def main(cfg: DictConfig):
-    ckpt = cfg.prott5.ckpt
-    max_length = cfg.prott5.max_length
+    ckpt = cfg.ankh.ckpt
+    max_length = cfg.ankh.max_length
     seed = cfg.train_config.seed
     use_lora = cfg.use_lora
+
     set_seed(seed=seed)
     print("Checkpoint:", ckpt)
 
-    model, tokenizer = load_prott5_model(
+    model, tokenizer = load_ankh_model(
         ckpt=ckpt,
         use_lora=use_lora,
         rank=cfg.lora_config.r,
         alpha=cfg.lora_config.alpha,
         dropout=cfg.lora_config.dropout,
-        target_modules=cfg.prott5.target_modules,
+        target_modules=cfg.ankh.target_modules,
         bias=cfg.lora_config.bias,
     )
 
-    downstream_model = MultiChainModel(
+    downstream_model = HierarchicalPoolingModel(
         backbone=model,
-        global_pooler=cfg.multichain_config.global_pooler,
-        chains_pooler=cfg.multichain_config.chains_pooler,
-        shared_global_pooler=cfg.multichain_config.shared_global_pooler,
-        shared_chains_pooler=cfg.multichain_config.shared_chains_pooler,
-        aggregation_method=cfg.multichain_config.aggregation_method,
-        use_ffn=cfg.multichain_config.use_ffn,
-        bias=cfg.multichain_config.bias,
-        model_name="prott5",
+        global_pooler=cfg.hierarchical_pooling_config.global_pooler,
+        chains_pooler=cfg.hierarchical_pooling_config.chains_pooler,
+        shared_global_pooler=cfg.hierarchical_pooling_config.shared_global_pooler, # noqa
+        shared_chains_pooler=cfg.hierarchical_pooling_config.shared_chains_pooler, # noqa
+        aggregation_method=cfg.hierarchical_pooling_config.aggregation_method,
+        use_ffn=cfg.hierarchical_pooling_config.use_ffn,
+        bias=cfg.hierarchical_pooling_config.bias,
+        model_name="ankh",
         embedding_name="last_hidden_state",
         gradient_checkpointing=cfg.enable_gradient_checkpointing,
         loss_fn=cfg.loss_config.name,
         loss_fn_options=cfg.loss_config.options,
     )
 
-    setup = add_lora_prefix("multichain", use_lora=use_lora)
+    setup = add_lora_prefix("hierarchical_pooling", use_lora=use_lora)
     run_name = create_run_name(
         backbone=ckpt,
         setup=setup,
         seed=seed,
-        aggregation_method=cfg.multichain_config.aggregation_method,
-        use_ffn=cfg.multichain_config.use_ffn,
-        bias=cfg.multichain_config.bias,
-        global_pooler=cfg.multichain_config.global_pooler,
-        chains_pooler=cfg.multichain_config.chains_pooler,
-        shared_global_pooler=cfg.multichain_config.shared_global_pooler,
-        shared_chains_pooler=cfg.multichain_config.shared_chains_pooler,
+        aggregation_method=cfg.hierarchical_pooling_config.aggregation_method,
+        use_ffn=cfg.hierarchical_pooling_config.use_ffn,
+        bias=cfg.hierarchical_pooling_config.bias,
+        global_pooler=cfg.hierarchical_pooling_config.global_pooler,
+        chains_pooler=cfg.hierarchical_pooling_config.chains_pooler,
+        shared_global_pooler=cfg.hierarchical_pooling_config.shared_global_pooler, # noqa
+        shared_chains_pooler=cfg.hierarchical_pooling_config.shared_chains_pooler, # noqa
         loss_fn=cfg.loss_config.name,
     )
 
@@ -88,9 +89,9 @@ def main(cfg: DictConfig):
     trainer = Trainer(
         model=downstream_model,
         args=training_args,
-        data_collator=data_adapters.MultiChainCollator(
+        data_collator=data_adapters.HierarchicalPoolingCollator(
             tokenizer=tokenizer,
-            model_name="prott5",
+            model_name="ankh",
             max_length=max_length,
             labels_preprocessing_function=partial(
                 log_transform_labels,

@@ -1,7 +1,7 @@
 import unittest
 
 from ppiseq.data_adapters.preprocessing_pipelines import \
-    MultiChainPreprocessingPipeline
+    HierarchicalPoolingPreprocessingPipeline
 from ppiseq.data_adapters.preprocessing_pipelines import \
     SequenceConcatPreprocessingPipeline
 from ppiseq.data_adapters.preprocessing_pipelines import \
@@ -253,8 +253,8 @@ class TestPreprocessingPipelines(unittest.TestCase):
         )
         self.assertEqual(sequence, expected)
 
-    def test_prott5_multi_chain_preprocessing(self):
-        preprocessor = MultiChainPreprocessingPipeline("prott5")
+    def test_prott5_hierarchical_pooling_preprocessing(self):
+        preprocessor = HierarchicalPoolingPreprocessingPipeline("prott5")
         ligand_sequence = "MALWMRLLPLLALLALWGPDUZOB,MALWMRLLPLLALLALWGPDPAAA"
         receptor_sequence = "MALWMRLLPLLALLALWGPDPAAA,MALWMRLLPLLALLALWGPDUZOB"
         expected_ligands = list("MALWMRLLPLLALLALWGPDXXXX"), list(
@@ -271,8 +271,8 @@ class TestPreprocessingPipelines(unittest.TestCase):
         for receptor, expected_receptor in zip(receptors, expected_receptors):
             self.assertEqual(receptor, expected_receptor)
 
-    def test_ankh_multi_chain_preprocessing(self):
-        preprocessor = MultiChainPreprocessingPipeline("ankh")
+    def test_ankh_hierarchical_pooling_preprocessing(self):
+        preprocessor = HierarchicalPoolingPreprocessingPipeline("ankh")
         ligand_sequence = "MALWMRLLPLLALLALWGPDPAAA,MALWMRLLPLLALLALWGPDPAAA"
         receptor_sequence = "MALWMRLLPLLALLALWGPDPAAA,MALWMRLLPLLALLALWGPDPAAA"
         expected_ligands = list("MALWMRLLPLLALLALWGPDPAAA"), list(
@@ -289,8 +289,8 @@ class TestPreprocessingPipelines(unittest.TestCase):
         for receptor, expected_receptor in zip(receptors, expected_receptors):
             self.assertEqual(receptor, expected_receptor)
 
-    def test_esm_multi_chain_preprocessing(self):
-        preprocessor = MultiChainPreprocessingPipeline("esm")
+    def test_esm_hierarchical_pooling_preprocessing(self):
+        preprocessor = HierarchicalPoolingPreprocessingPipeline("esm")
         ligand_sequence = "MALWMRLLPLLALLALWGPDPAAA,MALWMRLLPLLALLALWGPDPAAA"
         receptor_sequence = "MALWMRLLPLLALLALWGPDPAAA,MALWMRLLPLLALLALWGPDPAAA"
         expected_ligands = list("MALWMRLLPLLALLALWGPDPAAA"), list(

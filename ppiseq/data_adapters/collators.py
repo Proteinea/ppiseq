@@ -181,7 +181,7 @@ class SequenceConcatCollator:
         }
 
 
-class MultiChainCollator:
+class HierarchicalPoolingCollator:
     def __init__(
         self,
         tokenizer,
@@ -189,7 +189,7 @@ class MultiChainCollator:
         max_length: int | None = None,
         labels_preprocessing_function: typing.Callable | None = None,
     ):
-        """Initialize the MultiChainCollator.
+        """Initialize the HierarchicalPoolingCollator.
 
         Args:
             tokenizer (typing.Callable): The tokenizer.
@@ -207,7 +207,9 @@ class MultiChainCollator:
         self.max_length = max_length
         self.labels_preprocessing_function = labels_preprocessing_function
         self.preprocessor = (
-            preprocessing_pipelines.MultiChainPreprocessingPipeline(model_name)
+            preprocessing_pipelines.HierarchicalPoolingPreprocessingPipeline(
+                model_name
+            )
         )
 
     def __call__(self, batch: list[typing.Dict[str, typing.Any]]):
